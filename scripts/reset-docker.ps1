@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 Write-Host "==========================================================" -ForegroundColor Red
 Write-Host "  ONCOLINK: Reset Local Docker Volumes" -ForegroundColor Red
 Write-Host "==========================================================" -ForegroundColor Red
-Write-Host "WARNING: This will destroy all local MongoDB data, keyfiles, and MinIO objects." -ForegroundColor Yellow
+Write-Host "WARNING: This will destroy all local MongoDB replica set data, GridFS images, and keyfiles." -ForegroundColor Yellow
 
 if (-not $Force) {
     $confirm = Read-Host "Are you sure you want to proceed? (y/N)"
@@ -29,7 +29,7 @@ try {
     docker compose down -v --remove-orphans
 
     # Force remove named volumes if still present
-    $volumes = @("oncolink_mongo_data", "oncolink_mongo_keyfile", "oncolink_minio_data")
+    $volumes = @("oncolink_mongo_data", "oncolink_mongo_keyfile")
     foreach ($vol in $volumes) {
         try {
             docker volume rm $vol 2>$null

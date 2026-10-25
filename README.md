@@ -31,7 +31,7 @@
    - Verify all prerequisites.
    - Generate `.env` from `.env.example` if not already present.
    - Install frontend packages.
-   - Build and launch the containerized stack (MongoDB Replica Set with auth, MinIO, FastAPI Backend, Vite Frontend).
+   - Build and launch the containerized stack (MongoDB Replica Set with auth & GridFS, FastAPI Backend, Vite Frontend).
    - Wait for `/health` to report `healthy`.
 
 ---
@@ -39,15 +39,16 @@
 ## Running the Application
 
 ### Start the Full Stack (Docker)
+All published ports are strictly bound to `127.0.0.1` for local isolation.
 ```powershell
 docker compose up -d
 ```
 
 ### Access Points
-- **Frontend App:** http://localhost:5173
-- **Backend Health Check:** http://localhost:8000/health
-- **FastAPI OpenAPI Docs:** http://localhost:8000/docs
-- **MinIO Storage Console:** http://localhost:9001
+- **Frontend App:** http://127.0.0.1:5173
+- **Backend Health Check:** http://127.0.0.1:8000/health
+- **FastAPI OpenAPI Docs:** http://127.0.0.1:8000/docs
+- **Image Storage:** Internal MongoDB GridFS (served only via authenticated backend endpoints)
 
 ### Stop the Stack
 ```powershell
@@ -55,7 +56,7 @@ docker compose down
 ```
 
 ### Reset Local Volumes & Databases
-To wipe local development MongoDB replica set data and MinIO buckets:
+To wipe local development MongoDB replica set data, keyfiles, and GridFS images:
 ```powershell
 .\scripts\reset-docker.ps1
 ```
@@ -75,7 +76,7 @@ npm run test
 ```powershell
 npm run test:backend
 ```
-*(Executes pytest inside the backend container against an isolated replica set test database, including transaction atomicity and rollback verification).*
+*(Executes pytest inside the backend container against an isolated replica set test database, testing health, transaction rollback/commit atomicity, and GridFS save/open/delete operations).*
 
 ### Run Frontend Smoke Tests
 ```powershell

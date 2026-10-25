@@ -4,7 +4,7 @@ from typing import Any
 from fastapi import APIRouter, Response, status
 
 from app.database import check_mongodb_health
-from app.storage import check_minio_health
+from app.storage import check_gridfs_health
 
 router = APIRouter(tags=["Health"])
 
@@ -12,13 +12,13 @@ router = APIRouter(tags=["Health"])
 @router.get("/health")
 async def health_check(response: Response) -> dict[str, Any]:
     """
-    Diagnostic health check endpoint verifying MongoDB and MinIO independently.
-    Returns HTTP 200 when both are healthy; returns HTTP 503 if either service fails.
+    Diagnostic health check endpoint verifying MongoDB and GridFS independently.
+    Returns HTTP 200 when both are healthy; returns HTTP 503 if any service fails.
     """
     mongo_health = await check_mongodb_health()
-    minio_health = check_minio_health()
+    gridfs_health = await check_gridfs_health()
 
-    is_healthy = mongo_health.get("status") == "connected" and minio_health.get("status") == "connected"
+    is_healthy = mongo_health.get("status") == "connected" and gridfs_health.get("status") == "connected"
 
     if not is_healthy:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
@@ -28,6 +28,6 @@ async def health_check(response: Response) -> dict[str, Any]:
         "timestamp": datetime.now(UTC).isoformat(),
         "services": {
             "mongodb": mongo_health,
-            "minio": minio_health,
+            "gridfs": gridfs_health,
         },
     }

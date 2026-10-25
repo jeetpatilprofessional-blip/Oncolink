@@ -10,7 +10,7 @@ interface HealthResponse {
   timestamp: string;
   services: {
     mongodb: ServiceHealth;
-    minio: ServiceHealth;
+    gridfs: ServiceHealth;
   };
 }
 
@@ -113,12 +113,12 @@ export const App: React.FC = () => {
                   </td>
                 </tr>
                 <tr>
-                  <td className="p-2 font-medium border-r border-[#D5DAD8]">MinIO Storage</td>
+                  <td className="p-2 font-medium border-r border-[#D5DAD8]">GridFS Storage</td>
                   <td className="p-2 border-r border-[#D5DAD8]">
-                    {String(health.services.minio.status)}
+                    {String(health.services.gridfs.status)}
                   </td>
                   <td className="p-2 text-xs">
-                    Bucket: {String(health.services.minio.bucket ?? "N/A")}
+                    Bucket: {String(health.services.gridfs.bucket ?? "N/A")}
                   </td>
                 </tr>
               </tbody>

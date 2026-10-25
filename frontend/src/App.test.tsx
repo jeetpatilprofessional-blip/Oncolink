@@ -15,7 +15,7 @@ describe("Frontend Foundation Smoke Test", () => {
               timestamp: "2026-10-25T12:00:00Z",
               services: {
                 mongodb: { status: "connected", replica_set: "rs0" },
-                minio: { status: "connected", bucket: "oncolink-cases" },
+                gridfs: { status: "connected", bucket: "case_images" },
               },
             }),
         })
@@ -23,7 +23,7 @@ describe("Frontend Foundation Smoke Test", () => {
     );
   });
 
-  it("renders the intended-use notice and health check heading", async () => {
+  it("renders the intended-use notice, health check heading, and gridfs status", async () => {
     render(<App />);
 
     // Must show intended-use notice
@@ -38,6 +38,7 @@ describe("Frontend Foundation Smoke Test", () => {
     // Wait for the async health fetch to complete
     await waitFor(() => {
       expect(screen.getByText(/SYSTEM STATUS:/i)).toBeDefined();
+      expect(screen.getByText(/GridFS Storage/i)).toBeDefined();
     });
   });
 });

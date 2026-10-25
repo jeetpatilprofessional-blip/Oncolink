@@ -8,7 +8,6 @@ from app.api.health import router as health_router
 from app.config import Settings, get_settings
 from app.database import close_db, init_db
 from app.logging import logger, setup_logging
-from app.storage import init_storage
 
 
 @asynccontextmanager
@@ -20,12 +19,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize MongoDB (will raise RuntimeError and refuse to start if unreachable)
     await init_db(settings)
-
-    # Initialize MinIO storage
-    try:
-        init_storage(settings)
-    except Exception as exc:
-        logger.warning("MinIO initialization warning during startup", extra={"error": str(exc)})
 
     yield
 

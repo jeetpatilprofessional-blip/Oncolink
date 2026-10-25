@@ -79,7 +79,7 @@ Push-Location $rootPath
 try {
     docker compose build
     docker compose up -d
-    Write-Host "  [OK] Containers started in background." -ForegroundColor Green
+    Write-Host "  [OK] Containers started in background (bound to 127.0.0.1)." -ForegroundColor Green
 } finally {
     Pop-Location
 }
@@ -94,7 +94,7 @@ while ($attempt -lt $maxAttempts -and -not $healthy) {
     Start-Sleep -Seconds 3
     $attempt++
     try {
-        $res = Invoke-RestMethod -Uri "http://localhost:8000/health" -Method Get -TimeoutSec 3 -ErrorAction SilentlyContinue
+        $res = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method Get -TimeoutSec 3 -ErrorAction SilentlyContinue
         if ($res.status -eq "healthy") {
             $healthy = $true
             break
@@ -107,9 +107,8 @@ while ($attempt -lt $maxAttempts -and -not $healthy) {
 if ($healthy) {
     Write-Host "`n==========================================================" -ForegroundColor Green
     Write-Host "  ONCOLINK Foundation is LIVE and HEALTHY!" -ForegroundColor Green
-    Write-Host "  - Frontend: http://localhost:5173" -ForegroundColor Cyan
-    Write-Host "  - Backend Health: http://localhost:8000/health" -ForegroundColor Cyan
-    Write-Host "  - MinIO Console: http://localhost:9001" -ForegroundColor Cyan
+    Write-Host "  - Frontend: http://127.0.0.1:5173" -ForegroundColor Cyan
+    Write-Host "  - Backend Health: http://127.0.0.1:8000/health" -ForegroundColor Cyan
     Write-Host "==========================================================" -ForegroundColor Green
 } else {
     Write-Warning "Backend did not become healthy within the timeout window. Check 'docker compose logs'."

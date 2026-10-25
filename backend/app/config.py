@@ -30,12 +30,8 @@ class Settings(BaseSettings):
         "?replicaSet=rs0&authSource=oncolink"
     )
 
-    # MinIO
-    minio_endpoint: str = "minio:9000"
-    minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minio_dev_password_change_me"
-    minio_bucket_name: str = "oncolink-cases"
-    minio_use_ssl: bool = False
+    # GridFS Storage (in-database image storage behind StorageService interface)
+    gridfs_bucket_name: str = "case_images"
 
     # Security & Tokens
     jwt_secret: str = "change_this_to_a_secure_random_hex_key_before_production"
