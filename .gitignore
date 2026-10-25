@@ -47,9 +47,20 @@ dist/
 *.key
 
 # Local persistent data directories
-data/
+/data/
 mongo_data/
 minio_data/
+
+# Machine learning data and model artifacts (ignore binary images, weights, archives)
+ml/data/raw/**/*.jpg
+ml/data/raw/**/*.jpeg
+ml/data/raw/**/*.png
+ml/data/raw/**/*.bmp
+ml/data/raw/**/*.zip
+ml/data/raw/**/*.tar.gz
+ml/models/*.pt
+ml/models/*.pth
+ml/models/*.onnx
 
 # OS and IDE files
 .DS_Store
