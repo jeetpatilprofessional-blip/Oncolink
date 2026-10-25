@@ -27,9 +27,11 @@ describe("OralSiteMap Component", () => {
       />
     );
 
-    // List buttons show correct indicators
-    expect(screen.getByText(/✓ Captured/i)).toBeInTheDocument();
-    expect(screen.getByText(/✕ Quality check rejected/i)).toBeInTheDocument();
+    // List buttons show correct indicators with drawn SVG icons
+    expect(screen.getByText(/^Captured$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Quality check rejected$/i)).toBeInTheDocument();
+    expect(document.querySelector('path[d="M 2 6 L 5 9 L 10 3"]')).toBeInTheDocument();
+    expect(document.querySelector('path[d="M 2.5 2.5 L 9.5 9.5 M 9.5 2.5 L 2.5 9.5"]')).toBeInTheDocument();
   });
 
   it("handles keyboard navigation between regions using arrow keys and Enter", () => {

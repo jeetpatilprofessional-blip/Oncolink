@@ -194,41 +194,8 @@ Write-Host "  [OK] Case submitted successfully!" -ForegroundColor Green
 Write-Host ($submitRes | ConvertTo-Json -Depth 3)
 
 # 8. Clean up all created test records
-Write-Host "`n[Step 8] Cleaning up created smoke test records from MongoDB..." -ForegroundColor Yellow
-$pyCleanup = @"
-import asyncio
-from bson import ObjectId
-import motor.motor_asyncio
-from app.config import get_settings
-from app.storage import GridFSStorageService
-
-async def cleanup():
-    settings = get_settings()
-    client = motor.motor_asyncio.AsyncIOMotorClient(settings.mongo_uri)
-    db = client[settings.mongo_db_name]
-    storage = GridFSStorageService(db, 'case_images')
-
-    cid = '$caseId'
-    pid = '$patientId'
-
-    # Clean up GridFS files
-    async for img in db['images'].find({'case_id': cid}):
-        try:
-            await storage.delete(str(img['storage_id']))
-        except Exception:
-            pass
-
-    await db['images'].delete_many({'case_id': cid})
-    await db['case_history'].delete_many({'case_id': cid})
-    await db['cases'].delete_one({'_id': ObjectId(cid)})
-    await db['consents'].delete_many({'patient_id': pid})
-    await db['patients'].delete_one({'_id': ObjectId(pid)})
-    print('Database cleanup completed cleanly.')
-
-asyncio.run(cleanup())
-"@
-
-docker compose -f (Join-Path $PSScriptRoot "..\docker-compose.yml") exec -T backend python -c "$pyCleanup"
+Write-Host "`n[Step 8] Cleaning up created smoke test records via backend CLI..." -ForegroundColor Yellow
+docker compose -f (Join-Path $PSScriptRoot "..\docker-compose.yml") exec -T backend python -m app.cli clean-smoke-case $caseId
 Write-Host "  [OK] Smoke test records purged." -ForegroundColor Green
 
 Write-Host "`n========================================================" -ForegroundColor Cyan

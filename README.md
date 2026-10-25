@@ -6,6 +6,15 @@
 
 ---
 
+## Limitations & Clinical Caveats
+
+1. **Quality Gate Measures Photographic Properties Only:** The automated quality gate evaluates sharpness, brightness, shadow/highlight fractions, and minimum pixel dimensions only. It **cannot confirm that a mouth or lesion is present** (for example, a high-contrast synthetic checkerboard test image passes all checks).
+2. **Untuned Heuristic Thresholds:** Quality gate thresholds are prototype heuristics and have not yet been clinically tuned or calibrated against diverse real-world mobile camera sensors and field lighting conditions.
+3. **English-Only Informed Consent:** The informed consent text is currently provided in English only. It must be professionally translated into regional languages and formally reviewed by an institutional ethics committee (IRB/IEC) before any field screening use.
+4. **Dataset Splitting Limitations:** Public oral photography datasets lack patient identifiers. While exact and near-duplicates are grouped into single splits via perceptual hashing, performance metrics may still be optimistic if multiple photos of a single patient exist under different angles.
+
+---
+
 ## Prerequisites
 
 - **Windows 10/11** with PowerShell

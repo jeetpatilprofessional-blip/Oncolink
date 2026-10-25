@@ -79,7 +79,7 @@ export const ScreenerHomePage: React.FC = () => {
 
         <div className="border-b border-rule pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-ink">
+            <h1 className="font-sans text-2xl font-bold tracking-tight text-ink">
               {t("home.screener_title")}
             </h1>
             <p className="text-xs text-ink/70 mt-0.5">
@@ -105,7 +105,7 @@ export const ScreenerHomePage: React.FC = () => {
         {/* Session Ledger Table */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-serif text-lg font-bold text-ink">
+            <h2 className="font-sans text-lg font-bold text-ink">
               {t("screener_flow.session_ledger_title")}
             </h2>
             <span className="text-xs text-ink/70 tabular-nums">

@@ -11,6 +11,39 @@ export interface OralSiteMapProps {
   showListAlternative?: boolean;
 }
 
+/**
+ * Drawn SVG tick mark using vector paths (no unicode text glyphs).
+ * Color: ink (#18242C).
+ */
+const SvgTick: React.FC<{ cx: number; cy: number }> = ({ cx, cy }) => (
+  <g transform={`translate(${cx}, ${cy})`} className="pointer-events-none" aria-hidden="true">
+    <path
+      d="M -5 0 L -1 4 L 6 -3"
+      fill="none"
+      stroke="#18242C"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </g>
+);
+
+/**
+ * Drawn SVG cross mark using vector paths (no unicode text glyphs).
+ * Color: urgent (#B42318).
+ */
+const SvgCross: React.FC<{ cx: number; cy: number }> = ({ cx, cy }) => (
+  <g transform={`translate(${cx}, ${cy})`} className="pointer-events-none" aria-hidden="true">
+    <path
+      d="M -4 -4 L 4 4 M 4 -4 L -4 4"
+      fill="none"
+      stroke="#B42318"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+    />
+  </g>
+);
+
 export const OralSiteMap: React.FC<OralSiteMapProps> = ({
   siteStates,
   selectedSite,
@@ -58,17 +91,24 @@ export const OralSiteMap: React.FC<OralSiteMapProps> = ({
     if (state === "captured") {
       return {
         fill: "#18242C",
-        fillOpacity: 0.18,
+        fillOpacity: 0.12,
         stroke: isSelected ? "#4B2E83" : "#18242C",
         strokeWidth: isSelected ? 3 : 2,
       };
     }
     // not_captured
     return {
-      fill: isSelected ? "rgba(75, 46, 131, 0.08)" : "transparent",
+      fill: isSelected ? "#4B2E83" : "transparent",
+      fillOpacity: isSelected ? 0.08 : 0,
       stroke: isSelected ? "#4B2E83" : "#18242C",
       strokeWidth: isSelected ? 3 : 2,
     };
+  };
+
+  const renderRegionIndicator = (state: SiteMapState, cx: number, cy: number) => {
+    if (state === "captured") return <SvgTick cx={cx} cy={cy} />;
+    if (state === "rejected") return <SvgCross cx={cx} cy={cy} />;
+    return null;
   };
 
   return (
@@ -129,9 +169,8 @@ export const OralSiteMap: React.FC<OralSiteMapProps> = ({
             className="font-sans text-[11px] font-semibold fill-ink pointer-events-none"
           >
             {t("sites.lips_and_gums")}
-            {getRegionState("lips_and_gums") === "captured" ? " ✓" : ""}
-            {getRegionState("lips_and_gums") === "rejected" ? " ✕" : ""}
           </text>
+          {renderRegionIndicator(getRegionState("lips_and_gums"), 160, 246)}
         </g>
 
         {/* 2. HARD PALATE */}
@@ -152,14 +191,13 @@ export const OralSiteMap: React.FC<OralSiteMapProps> = ({
           />
           <text
             x="160"
-            y="76"
+            y="78"
             textAnchor="middle"
             className="font-sans text-[11px] font-semibold fill-ink pointer-events-none"
           >
             {t("sites.hard_palate")}
-            {getRegionState("hard_palate") === "captured" ? " ✓" : ""}
-            {getRegionState("hard_palate") === "rejected" ? " ✕" : ""}
           </text>
+          {renderRegionIndicator(getRegionState("hard_palate"), 160, 62)}
         </g>
 
         {/* 3. TONGUE TOP */}
@@ -180,14 +218,13 @@ export const OralSiteMap: React.FC<OralSiteMapProps> = ({
           />
           <text
             x="160"
-            y="138"
+            y="142"
             textAnchor="middle"
             className="font-sans text-[11px] font-semibold fill-ink pointer-events-none"
           >
             {t("sites.tongue_top")}
-            {getRegionState("tongue_top") === "captured" ? " ✓" : ""}
-            {getRegionState("tongue_top") === "rejected" ? " ✕" : ""}
           </text>
+          {renderRegionIndicator(getRegionState("tongue_top"), 160, 124)}
         </g>
 
         {/* 4. TONGUE SIDES */}
@@ -202,20 +239,28 @@ export const OralSiteMap: React.FC<OralSiteMapProps> = ({
           className="cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-gentian"
         >
           <path
-            d="M 106 106 L 123 106 L 128 165 L 111 165 Z M 197 106 L 214 106 L 209 165 L 192 165 Z"
+            d="M 100 115 L 122 108 L 127 165 L 110 185 Z M 220 115 L 198 108 L 193 165 L 210 185 Z"
             {...getFillStyle(getRegionState("tongue_sides"), selectedSite === "tongue_sides")}
             className="transition-all duration-150"
           />
           <text
-            x="160"
-            y="178"
+            x="115"
+            y="172"
             textAnchor="middle"
-            className="font-sans text-[10px] font-medium fill-ink pointer-events-none"
+            className="font-sans text-[9px] font-semibold fill-ink pointer-events-none"
           >
-            {t("sites.tongue_sides")}
-            {getRegionState("tongue_sides") === "captured" ? " ✓" : ""}
-            {getRegionState("tongue_sides") === "rejected" ? " ✕" : ""}
+            Sides
           </text>
+          <text
+            x="205"
+            y="172"
+            textAnchor="middle"
+            className="font-sans text-[9px] font-semibold fill-ink pointer-events-none"
+          >
+            Sides
+          </text>
+          {renderRegionIndicator(getRegionState("tongue_sides"), 115, 154)}
+          {renderRegionIndicator(getRegionState("tongue_sides"), 205, 154)}
         </g>
 
         {/* 5. FLOOR OF MOUTH */}
@@ -230,20 +275,19 @@ export const OralSiteMap: React.FC<OralSiteMapProps> = ({
           className="cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-gentian"
         >
           <path
-            d="M 112 188 Q 160 180 208 188 Q 198 222 160 226 Q 122 222 112 188 Z"
+            d="M 112 188 Q 160 178 208 188 L 195 218 Q 160 228 125 218 Z"
             {...getFillStyle(getRegionState("floor_of_mouth"), selectedSite === "floor_of_mouth")}
             className="transition-all duration-150"
           />
           <text
             x="160"
-            y="207"
+            y="206"
             textAnchor="middle"
             className="font-sans text-[10px] font-semibold fill-ink pointer-events-none"
           >
             {t("sites.floor_of_mouth")}
-            {getRegionState("floor_of_mouth") === "captured" ? " ✓" : ""}
-            {getRegionState("floor_of_mouth") === "rejected" ? " ✕" : ""}
           </text>
+          {renderRegionIndicator(getRegionState("floor_of_mouth"), 160, 192)}
         </g>
 
         {/* 6. LEFT CHEEK (Patient Left / Viewer Right) */}
@@ -264,14 +308,13 @@ export const OralSiteMap: React.FC<OralSiteMapProps> = ({
           />
           <text
             x="256"
-            y="145"
+            y="150"
             textAnchor="middle"
             className="font-sans text-[10px] font-semibold fill-ink pointer-events-none"
           >
             {t("sites.left_cheek")}
-            {getRegionState("left_cheek") === "captured" ? " ✓" : ""}
-            {getRegionState("left_cheek") === "rejected" ? " ✕" : ""}
           </text>
+          {renderRegionIndicator(getRegionState("left_cheek"), 256, 130)}
         </g>
 
         {/* 7. RIGHT CHEEK (Patient Right / Viewer Left) */}
@@ -292,14 +335,13 @@ export const OralSiteMap: React.FC<OralSiteMapProps> = ({
           />
           <text
             x="64"
-            y="145"
+            y="150"
             textAnchor="middle"
             className="font-sans text-[10px] font-semibold fill-ink pointer-events-none"
           >
             {t("sites.right_cheek")}
-            {getRegionState("right_cheek") === "captured" ? " ✓" : ""}
-            {getRegionState("right_cheek") === "rejected" ? " ✕" : ""}
           </text>
+          {renderRegionIndicator(getRegionState("right_cheek"), 64, 130)}
         </g>
       </svg>
 
@@ -324,15 +366,21 @@ export const OralSiteMap: React.FC<OralSiteMapProps> = ({
                   aria-pressed={isSelected}
                 >
                   <span className="font-medium">{t(`sites.${site}`)}</span>
-                  <span className="text-[11px] tabular-nums text-ink/70 flex items-center gap-1">
+                  <span className="text-[11px] tabular-nums text-ink/80 flex items-center gap-1.5">
                     {state === "captured" && (
-                      <span className="text-routine font-bold" title={t("site_states.captured")}>
-                        ✓ {t("site_states.captured")}
+                      <span className="text-ink font-semibold flex items-center gap-1.5" title={t("site_states.captured")}>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#18242C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M 2 6 L 5 9 L 10 3" />
+                        </svg>
+                        <span>{t("site_states.captured")}</span>
                       </span>
                     )}
                     {state === "rejected" && (
-                      <span className="text-urgent font-bold" title={t("site_states.rejected")}>
-                        ✕ {t("site_states.rejected")}
+                      <span className="text-urgent font-bold flex items-center gap-1.5" title={t("site_states.rejected")}>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#B42318" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                          <path d="M 2.5 2.5 L 9.5 9.5 M 9.5 2.5 L 2.5 9.5" />
+                        </svg>
+                        <span>{t("site_states.rejected")}</span>
                       </span>
                     )}
                     {state === "not_captured" && <span>{t("site_states.not_captured")}</span>}

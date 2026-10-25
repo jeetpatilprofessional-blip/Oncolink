@@ -34,7 +34,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   let variantStyles = "";
   if (variant === "primary") {
-    variantStyles = "bg-[#4B2E83] text-white hover:bg-[#3d246c] active:bg-[#341e5c]";
+    variantStyles = "bg-[#4B2E83] text-white hover:bg-[#4B2E83]/90 active:bg-[#4B2E83]/80";
   } else if (variant === "secondary") {
     variantStyles =
       "border border-[#18242C] bg-transparent text-[#18242C] hover:bg-[#18242C]/5 active:bg-[#18242C]/10";

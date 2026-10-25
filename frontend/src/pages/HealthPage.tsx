@@ -114,7 +114,7 @@ export const HealthPage: React.FC = () => {
           {import.meta.env.DEV && (
             <Link
               to="/dev/components"
-              className="text-xs font-medium text-[#4B2E83] underline hover:text-[#3d246c] focus-visible:outline-2 focus-visible:outline-[#4B2E83]"
+              className="text-xs font-medium text-[#4B2E83] underline hover:text-[#4B2E83]/80 focus-visible:outline-2 focus-visible:outline-[#4B2E83]"
             >
               Open Components Gallery →
             </Link>

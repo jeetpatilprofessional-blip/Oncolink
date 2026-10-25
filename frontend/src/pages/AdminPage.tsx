@@ -249,7 +249,7 @@ export const AdminPage: React.FC = () => {
 
       <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <div className="border-b border-rule pb-4">
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-ink">
+          <h1 className="font-sans text-2xl font-bold tracking-tight text-ink">
             {t("admin.title")}
           </h1>
           <p className="mt-1 text-sm text-ink/70">
@@ -277,7 +277,7 @@ export const AdminPage: React.FC = () => {
 
         {/* Create Staff Form */}
         <section aria-labelledby="create-staff-heading" className="bg-white p-6 border border-rule rounded-sm shadow-xs">
-          <h2 id="create-staff-heading" className="font-serif font-bold text-lg text-ink mb-4">
+          <h2 id="create-staff-heading" className="font-sans font-bold text-lg text-ink mb-4">
             {t("admin.create_user_title")}
           </h2>
 
@@ -353,7 +353,7 @@ export const AdminPage: React.FC = () => {
 
         {/* Users Table */}
         <section aria-labelledby="users-table-heading" className="space-y-4">
-          <h2 id="users-table-heading" className="font-serif font-bold text-lg text-ink">
+          <h2 id="users-table-heading" className="font-sans font-bold text-lg text-ink">
             {t("admin.users_table_title")}
           </h2>
 
@@ -382,7 +382,7 @@ export const AdminPage: React.FC = () => {
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           >
             <div className="bg-white max-w-md w-full p-6 border border-rule rounded-sm shadow-md space-y-4">
-              <h3 id="deactivate-modal-title" className="font-serif font-bold text-lg text-ink">
+              <h3 id="deactivate-modal-title" className="font-sans font-bold text-lg text-ink">
                 {t("admin.confirm_deactivate_title")}
               </h3>
               <p className="text-sm text-ink/80 leading-relaxed">

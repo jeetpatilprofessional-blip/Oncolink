@@ -3,6 +3,9 @@ import getpass
 import os
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
+
+from bson import ObjectId
 
 from app.config import get_settings
 from app.database import close_db, init_db
@@ -12,6 +15,7 @@ from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
 from app.services.consent_service import ConsentService
 from app.services.patient_service import PatientService
+from app.storage import GridFSStorageService
 
 
 async def seed_demo_users() -> None:
@@ -261,10 +265,147 @@ async def create_admin(email: str, password: str | None = None) -> None:
     print(f"Admin account '{normalized_email}' created successfully.")
 
 
+async def clean_smoke_case(case_id: str) -> None:
+    """
+    Cleans up records and GridFS binaries for a completed smoke test screening case.
+    Strictly forbidden in production environments (ENV=production).
+    """
+    settings = get_settings()
+    env_str = os.getenv("ENV", settings.environment).strip().lower()
+    if env_str == "production":
+        print("ERROR: Smoke test case cleanup is strictly forbidden in production (ENV=production).")
+        sys.exit(1)
+
+    try:
+        case_oid = ObjectId(case_id)
+    except Exception as err:
+        print(f"ERROR: Invalid case ID format '{case_id}': {err}")
+        sys.exit(1)
+
+    client = await init_db(settings)
+    db = client[settings.mongo_db_name]
+    storage = GridFSStorageService(db, "case_images")
+
+    case_doc = await db["cases"].find_one({"_id": case_oid})
+    patient_id = case_doc.get("patient_id") if case_doc else None
+
+    # 1. Delete GridFS files
+    image_count = 0
+    async for img in db["images"].find({"case_id": case_id}):
+        storage_id = img.get("storage_id")
+        if storage_id:
+            try:
+                await storage.delete(str(storage_id))
+            except Exception:
+                pass
+        image_count += 1
+
+    # 2. Delete database records
+    await db["images"].delete_many({"case_id": case_id})
+    await db["case_history"].delete_many({"case_id": case_id})
+    await db["cases"].delete_one({"_id": case_oid})
+
+    if patient_id:
+        await db["consents"].delete_many({"patient_id": patient_id})
+        try:
+            await db["patients"].delete_one({"_id": ObjectId(patient_id)})
+        except Exception:
+            pass
+
+    await close_db()
+    print(f"Cleaned smoke case {case_id} ({image_count} images purged from GridFS, patient {patient_id} removed).")
+
+
+def quality_report(folder_path: str) -> None:
+    """
+    Runs the quality module on every image in a local folder and prints a summary table:
+    filename, blur score, mean brightness, shadow and highlight fractions, size, decision, reason codes.
+    Only reads the folder, stores nothing, and refuses ENV=production.
+    """
+    settings = get_settings()
+    env_str = os.getenv("ENV", settings.environment).strip().lower()
+    if env_str == "production":
+        print("ERROR: quality-report is disabled in production environments (ENV=production).")
+        sys.exit(1)
+
+    path_obj = Path(folder_path)
+    if not path_obj.exists() or not path_obj.is_dir():
+        print(f"ERROR: Directory '{folder_path}' does not exist or is not a directory.")
+        sys.exit(1)
+
+    image_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+    files = sorted([f for f in path_obj.iterdir() if f.is_file() and f.suffix.lower() in image_extensions])
+
+    if not files:
+        print(f"No image files found in '{folder_path}'. Supported formats: JPEG, PNG, WebP.")
+        return
+
+    from app.services.quality_gate import evaluate_image_quality
+
+    headers = [
+        "Filename",
+        "Blur Score",
+        "Mean Brightness",
+        "Shadow Frac",
+        "Highlight Frac",
+        "Size",
+        "Decision",
+        "Reason Codes",
+    ]
+    rows: list[list[str]] = []
+
+    for file_path in files:
+        filename = file_path.name
+        try:
+            with open(file_path, "rb") as fh:
+                data = fh.read()
+            status, reasons, scores = evaluate_image_quality(data)
+            rows.append([
+                filename,
+                f"{scores['laplacian_var']:.2f}",
+                f"{scores['mean_brightness']:.2f}",
+                f"{scores['shadow_fraction']:.4f}",
+                f"{scores['highlight_fraction']:.4f}",
+                f"{scores['width']}x{scores['height']}",
+                status,
+                ", ".join(reasons) if reasons else "-",
+            ])
+        except Exception as err:
+            rows.append([
+                filename,
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "error",
+                f"Decode failure: {err}",
+            ])
+
+    # Compute column widths
+    col_widths = [len(h) for h in headers]
+    for row in rows:
+        for i, val in enumerate(row):
+            col_widths[i] = max(col_widths[i], len(val))
+
+    def format_row(cols: list[str]) -> str:
+        return "| " + " | ".join(c.ljust(col_widths[idx]) for idx, c in enumerate(cols)) + " |"
+
+    separator = "+-" + "-+-".join("-" * w for w in col_widths) + "-+"
+
+    print(separator)
+    print(format_row(headers))
+    print(separator)
+    for row in rows:
+        print(format_row(row))
+    print(separator)
+    print(f"Evaluated {len(rows)} images in '{folder_path}'.")
+
+
 def main() -> None:
     """CLI dispatcher."""
     if len(sys.argv) < 2:
-        print("Usage: python -m app.cli [seed-demo-users | create-admin <email>]")
+        print("Usage: python -m app.cli [seed-demo-users | create-admin <email> | clean-smoke-case <case_id> | quality-report <path>]")
         sys.exit(1)
 
     command = sys.argv[1].lower()
@@ -280,8 +421,22 @@ def main() -> None:
         if len(sys.argv) >= 5 and sys.argv[3] == "--password":
             password = sys.argv[4]
         asyncio.run(create_admin(email, password))
+    elif command == "clean-smoke-case":
+        if len(sys.argv) < 3:
+            print("ERROR: clean-smoke-case requires a case_id argument.")
+            print("Usage: python -m app.cli clean-smoke-case <case_id>")
+            sys.exit(1)
+        asyncio.run(clean_smoke_case(sys.argv[2]))
+    elif command == "quality-report":
+        if len(sys.argv) < 3:
+            print("ERROR: quality-report requires a folder path argument.")
+            print("Usage: python -m app.cli quality-report <path>")
+            sys.exit(1)
+        quality_report(sys.argv[2])
     else:
-        print(f"Unknown command: '{command}'. Available commands: seed-demo-users, create-admin")
+        print(
+            f"Unknown command: '{command}'. Available commands: seed-demo-users, create-admin, clean-smoke-case, quality-report"
+        )
         sys.exit(1)
 
 

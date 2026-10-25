@@ -103,7 +103,7 @@ export const PatientHomePage: React.FC = () => {
 
         <div className="border-b border-rule pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-ink">
+            <h1 className="font-sans text-2xl font-bold tracking-tight text-ink">
               {t("home.patient_title")}
             </h1>
             <p className="text-xs text-ink/70 mt-0.5">
@@ -128,7 +128,7 @@ export const PatientHomePage: React.FC = () => {
         )}
 
         <div className="space-y-3">
-          <h2 className="font-serif text-lg font-bold text-ink">
+          <h2 className="font-sans text-lg font-bold text-ink">
             {t("patient_flow.past_screenings_title")}
           </h2>
 

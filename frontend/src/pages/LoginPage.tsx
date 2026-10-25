@@ -95,7 +95,7 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-paper flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-ink">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h1 className="text-center font-serif text-3xl font-bold tracking-tight text-ink">
+        <h1 className="text-center font-sans text-3xl font-bold tracking-tight text-ink">
           ONCOLINK
         </h1>
         <p className="mt-2 text-center text-sm text-ink/70">
@@ -157,7 +157,7 @@ export const LoginPage: React.FC = () => {
             </form>
           ) : (
             <form onSubmit={handleStep2Submit} className="space-y-6">
-              <h2 className="font-serif font-bold text-lg text-ink">
+              <h2 className="font-sans font-bold text-lg text-ink">
                 {t("auth.step2_title")}
               </h2>
 

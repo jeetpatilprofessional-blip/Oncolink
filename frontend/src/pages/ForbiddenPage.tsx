@@ -34,19 +34,19 @@ export const ForbiddenPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-paper flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-ink">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h1 className="text-center font-serif text-3xl font-bold tracking-tight text-ink">
+        <h1 className="text-center font-sans text-3xl font-bold tracking-tight text-ink">
           ONCOLINK
         </h1>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="bg-white py-8 px-6 sm:px-10 border border-rule rounded-sm shadow-xs text-center space-y-6">
-          <div className="w-12 h-12 mx-auto rounded-full bg-uncertain/15 flex items-center justify-center text-ink font-serif font-bold text-xl">
+          <div className="w-12 h-12 mx-auto rounded-full bg-uncertain/15 flex items-center justify-center text-ink font-sans font-bold text-xl">
             !
           </div>
 
           <div>
-            <h2 className="font-serif font-bold text-xl text-ink">
+            <h2 className="font-sans font-bold text-xl text-ink">
               {t("auth.forbidden_title")}
             </h2>
             <p className="mt-2 text-sm text-ink/70 leading-relaxed">

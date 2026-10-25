@@ -127,7 +127,7 @@ export const TwoFactorSetupPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-paper flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-ink">
       <div className="sm:mx-auto sm:w-full sm:max-w-xl">
-        <h1 className="text-center font-serif text-3xl font-bold tracking-tight text-ink">
+        <h1 className="text-center font-sans text-3xl font-bold tracking-tight text-ink">
           ONCOLINK
         </h1>
         <p className="mt-2 text-center text-sm text-ink/70">
@@ -153,7 +153,7 @@ export const TwoFactorSetupPage: React.FC = () => {
           ) : !isVerified ? (
             <div className="space-y-6">
               <div>
-                <h2 className="font-serif font-bold text-xl text-ink">
+                <h2 className="font-sans font-bold text-xl text-ink">
                   {t("auth.totp_setup_title")}
                 </h2>
                 <p className="mt-1 text-xs text-ink/70">
@@ -181,7 +181,7 @@ export const TwoFactorSetupPage: React.FC = () => {
                 <p className="text-xs text-ink/70 mb-1.5 font-medium">
                   {t("auth.manual_key_instructions")}
                 </p>
-                <div className="p-2.5 bg-paper border border-rule rounded-xs font-mono text-xs text-ink select-all text-center tracking-widest font-semibold">
+                <div className="p-2.5 bg-paper border border-rule rounded-xs font-sans tabular-nums text-xs text-ink select-all text-center tracking-widest font-semibold">
                   {setupData?.secret}
                 </div>
               </div>
@@ -213,7 +213,7 @@ export const TwoFactorSetupPage: React.FC = () => {
           ) : (
             <div className="space-y-6">
               <div>
-                <h2 className="font-serif font-bold text-xl text-ink">
+                <h2 className="font-sans font-bold text-xl text-ink">
                   {t("auth.recovery_codes_title")}
                 </h2>
                 <div className="mt-2 p-3 text-xs text-ink bg-urgent/10 border-l-4 border-urgent">
@@ -224,7 +224,7 @@ export const TwoFactorSetupPage: React.FC = () => {
               <div
                 tabIndex={0}
                 aria-label="Emergency recovery codes"
-                className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-4 bg-paper border border-rule rounded-xs font-mono text-sm font-bold text-ink text-center focus-visible:outline-2 focus-visible:outline-gentian focus-visible:outline-offset-2"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-4 bg-paper border border-rule rounded-xs font-sans tabular-nums text-sm font-bold text-ink text-center focus-visible:outline-2 focus-visible:outline-gentian focus-visible:outline-offset-2"
               >
                 {recoveryCodes.map((rc, idx) => (
                   <div

@@ -40,7 +40,7 @@ export const Nav: React.FC = () => {
         <div className="flex items-center gap-6">
           <Link
             to={getRoleDashboardPath()}
-            className="font-serif font-bold text-xl text-ink tracking-tight hover:text-gentian focus-visible:outline-2 focus-visible:outline-gentian focus-visible:outline-offset-2 rounded-xs"
+            className="font-sans font-bold text-xl text-ink tracking-tight hover:text-gentian focus-visible:outline-2 focus-visible:outline-gentian focus-visible:outline-offset-2 rounded-xs"
           >
             ONCOLINK
           </Link>

@@ -335,7 +335,7 @@ export const CapturePage: React.FC = () => {
           <span className="text-xs uppercase tracking-wider text-ink/70">
             {user?.role === "screener" ? "Screener Intake" : "Patient Self-Screening"}
           </span>
-          <h1 className="font-serif text-xl sm:text-2xl font-bold text-ink">
+          <h1 className="font-sans text-xl sm:text-2xl font-bold text-ink">
             {t("capture.step_header", {
               reference: caseData?.reference || caseId || "",
               step: "1",
@@ -449,7 +449,7 @@ export const CapturePage: React.FC = () => {
           <div
             role="status"
             aria-label={t("capture.uploading")}
-            className="w-full h-64 bg-rule/30 animate-pulse flex flex-col items-center justify-center text-white text-xs font-mono"
+            className="w-full h-64 bg-rule/30 animate-pulse flex flex-col items-center justify-center text-white text-xs font-sans"
           >
             <div className="h-6 w-32 bg-white/20 mb-2 animate-pulse" />
             <span>{t("capture.uploading")}</span>
@@ -469,14 +469,14 @@ export const CapturePage: React.FC = () => {
               className="absolute inset-4 border-2 border-white/60 pointer-events-none flex flex-col justify-between p-2"
               aria-hidden="true"
             >
-              <div className="flex justify-between text-[10px] text-white/80 font-mono">
+              <div className="flex justify-between text-[10px] text-white/80 font-sans tabular-nums">
                 <span>[ + ]</span>
                 <span>[ + ]</span>
               </div>
               <div className="text-center text-[11px] text-white/70 font-sans tracking-wide">
                 Center lesion inside frame
               </div>
-              <div className="flex justify-between text-[10px] text-white/80 font-mono">
+              <div className="flex justify-between text-[10px] text-white/80 font-sans tabular-nums">
                 <span>[ + ]</span>
                 <span>[ + ]</span>
               </div>

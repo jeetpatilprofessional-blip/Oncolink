@@ -10,7 +10,7 @@ export const CoordinatorHomePage: React.FC = () => {
       <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <Banner />
         <div className="border-b border-rule pb-4">
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-ink">
+          <h1 className="font-sans text-2xl font-bold tracking-tight text-ink">
             {t("home.coordinator_title")}
           </h1>
         </div>

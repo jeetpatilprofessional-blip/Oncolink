@@ -120,7 +120,7 @@ export const ScreenerNewPersonPage: React.FC = () => {
 
         <div className="border-b border-rule pb-3 flex items-center justify-between">
           <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-ink">
+            <h1 className="font-sans text-2xl font-bold tracking-tight text-ink">
               {step === "person" ? t("screener_flow.new_person_title") : t("screener_flow.consent_step_title")}
             </h1>
             <p className="text-xs text-ink/70 mt-0.5">

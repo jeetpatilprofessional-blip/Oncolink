@@ -104,7 +104,7 @@ export const ReviewSubmitPage: React.FC = () => {
         <Banner />
 
         <div className="border-b border-rule pb-3">
-          <h1 className="font-serif text-2xl font-bold text-ink">
+          <h1 className="font-sans text-2xl font-bold text-ink">
             {t("review.submitted_title")}
           </h1>
           <p className="text-xs text-ink/70 mt-1">
@@ -202,7 +202,7 @@ export const ReviewSubmitPage: React.FC = () => {
           <span className="text-xs uppercase tracking-wider text-ink/70">
             {user?.role === "screener" ? "Screener Intake" : "Patient Self-Screening"}
           </span>
-          <h1 className="font-serif text-xl sm:text-2xl font-bold text-ink">
+          <h1 className="font-sans text-xl sm:text-2xl font-bold text-ink">
             {t("review.title")}
           </h1>
           <p className="text-xs text-ink/70 mt-0.5">

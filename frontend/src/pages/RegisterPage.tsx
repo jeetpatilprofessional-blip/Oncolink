@@ -120,7 +120,7 @@ export const RegisterPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-paper flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-ink">
       <div className="sm:mx-auto sm:w-full sm:max-w-lg">
-        <h1 className="text-center font-serif text-3xl font-bold tracking-tight text-ink">
+        <h1 className="text-center font-sans text-3xl font-bold tracking-tight text-ink">
           ONCOLINK
         </h1>
         <p className="mt-2 text-center text-sm text-ink/70">

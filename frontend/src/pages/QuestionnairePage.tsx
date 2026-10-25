@@ -94,7 +94,7 @@ export const QuestionnairePage: React.FC = () => {
           <span className="text-xs uppercase tracking-wider text-ink/70">
             {user?.role === "screener" ? "Screener Intake" : "Patient Self-Screening"}
           </span>
-          <h1 className="font-serif text-xl sm:text-2xl font-bold text-ink">
+          <h1 className="font-sans text-xl sm:text-2xl font-bold text-ink">
             {t("questionnaire.title")}
           </h1>
         </div>

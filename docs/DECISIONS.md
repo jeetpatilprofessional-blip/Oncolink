@@ -135,4 +135,12 @@ This document records authoritative technical and architectural decisions for th
   3. **Near-Duplicate Group Grouping Invariant:** Exact and near-duplicate image groups (identified by perceptual hashing / pHash) must always be assigned together to a single partition (train, validation, or test). Under no circumstances may duplicate or near-duplicate variants of an image be split across training and evaluation splits.
   4. **Optimistic Evaluation Caveat:** Because different lesion photos from the same patient may exist in the raw datasets without matching perceptual hashes, cross-validation and test set performance metrics may still be optimistic despite duplicate grouping. All reported metrics must explicitly note this limitation.
 
+## Decision 18: Quality Gate Calibration & Consent Limitations
+
+* **Decision:**
+  1. **Anatomical Non-Verification Limitation:** The automated photographic quality gate measures sharpness (Laplacian variance), exposure (mean luminance and highlight/shadow pixel fractions), resolution (minimum width/height), and texture entropy only. It cannot confirm that an oral cavity, mouth, or lesion is actually present in the capture (for example, a high-contrast synthetic checkerboard test pattern passes all quality checks).
+  2. **Heuristic Calibration Caveat:** The current quality gate thresholds (`BLUR_LAPLACIAN_VAR_MIN = 100.0`, `BRIGHTNESS_MEAN_MIN = 40.0`, `BRIGHTNESS_MEAN_MAX = 220.0`, `DETAIL_STD_DEV_MIN = 20.0`, etc.) are untuned engineering heuristics designed for prototype integrity. They require rigorous empirical calibration against real-world clinical smartphone photography across varied lighting and device camera sensors before operational deployment.
+  3. **English-Only Consent Constraint:** Informed consent text (`backend/app/consent_texts/v1.txt`) is currently authored exclusively in English. Prior to any live field screening deployment, the consent disclosure must be professionally translated into local regional languages (e.g. Hindi, Marathi, Kannada) and vetted by institutional ethics review boards (IRB/IEC).
+
+
 
