@@ -1,7 +1,6 @@
 import hashlib
 import io
 import secrets
-import warnings
 from datetime import UTC, datetime
 from typing import Any
 
@@ -22,9 +21,9 @@ from app.storage import StorageService
 # Maximum allowable upload payload: 10 MB
 MAX_IMAGE_BYTES: int = 10 * 1024 * 1024
 
-# Pillow Decompression Bomb Mitigation (25 megapixels maximum)
+# Explicit Decompression Bomb Resolution Limit (25 megapixels maximum).
+# Pillow's built-in Image.MAX_IMAGE_PIXELS remains untouched as an internal backstop.
 MAX_IMAGE_PIXELS: int = 25_000_000
-Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 # Maximum images per screening case
 MAX_IMAGES_PER_CASE: int = 12
@@ -121,21 +120,23 @@ class ImageService:
                     detail=f"Mismatched Content-Type: header '{provided_mime}' does not match detected format '{detected_mime}'.",
                 )
 
-        # 3. Decompression bomb check & decode
+        # 3. Explicit decompression bomb check & lazy decode
         try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", Image.DecompressionBombWarning)
-                with Image.open(io.BytesIO(raw_bytes)) as pil_img:
-                    if (pil_img.width * pil_img.height) > MAX_IMAGE_PIXELS:
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Image resolution exceeds decompression bomb threshold (maximum 25 megapixels).",
-                        )
-                    # 4. Re-encode image: convert to RGB and write fresh JPEG buffer (strips all EXIF/GPS)
-                    rgb_img = pil_img.convert("RGB")
-                    out_buffer = io.BytesIO()
-                    rgb_img.save(out_buffer, format="JPEG", quality=90, optimize=True)
-                    reencoded_bytes = out_buffer.getvalue()
+            with Image.open(io.BytesIO(raw_bytes)) as pil_img:
+                width, height = pil_img.size
+                if (width * height) > MAX_IMAGE_PIXELS:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=(
+                            f"Image resolution ({width}x{height} = {width * height} pixels) "
+                            f"exceeds decompression bomb threshold (maximum {MAX_IMAGE_PIXELS} pixels)."
+                        ),
+                    )
+                # 4. Re-encode image: convert to RGB and write fresh JPEG buffer (strips all EXIF/GPS)
+                rgb_img = pil_img.convert("RGB")
+                out_buffer = io.BytesIO()
+                rgb_img.save(out_buffer, format="JPEG", quality=90, optimize=True)
+                reencoded_bytes = out_buffer.getvalue()
 
         except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
             raise HTTPException(

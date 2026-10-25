@@ -7,7 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import ValidationError
 
 from app.config import Settings
-from app.database import init_db
+from app.database import close_db, init_db
 from app.main import create_app
 from app.models.token import LoginRequest
 from app.models.user import PatientRegisterRequest, StaffUserCreate, UserRole
@@ -107,66 +107,69 @@ async def test_production_rejects_local_email_at_registration_and_admin_staff_cr
     monkeypatch.setattr("app.models.validators.get_settings", lambda: prod_settings)
 
     prod_app = create_app(prod_settings)
-    await init_db(prod_settings)
+    try:
+        await init_db(prod_settings)
 
-    # Provision an active admin user for the staff creation test
-    db = test_mongo_client[test_settings.mongo_db_name]
-    audit_svc = AuditService(db)
-    auth_svc = AuthService(db, prod_settings, audit_svc)
-    admin_id = "507f1f77bcf86cd799439011"
-    await db["users"].delete_many({"email": "admin@production-hospital.org"})
-    await db["users"].insert_one(
-        {
-            "_id": ObjectId(admin_id),
-            "email": "admin@production-hospital.org",
-            "password_hash": auth_svc.hash_password("AdminSecurePassword10!"),
-            "role": UserRole.ADMIN.value,
-            "is_active": True,
-            "is_demo": False,
-            "created_at": datetime.now(UTC),
-            "totp_enrolled": True,
-        }
-    )
-    admin_token, _ = auth_svc.create_access_token(user_id=admin_id, role=UserRole.ADMIN.value)
-
-    async with AsyncClient(
-        transport=ASGITransport(app=prod_app),
-        base_url="http://testserver",
-    ) as client:
-        # 1. Patient registration with .local is rejected
-        res_reg = await client.post(
-            "/auth/register",
-            json={
-                "email": "demo.patient@oncolink.local",
-                "password": "ValidPassword10!",
-                "date_of_birth": "1990-01-01",
-                "consent_version": "v1",
-                "consent_accepted": True,
-            },
+        # Provision an active admin user for the staff creation test
+        db = test_mongo_client[test_settings.mongo_db_name]
+        audit_svc = AuditService(db)
+        auth_svc = AuthService(db, prod_settings, audit_svc)
+        admin_id = "507f1f77bcf86cd799439011"
+        await db["users"].delete_many({"email": "admin@production-hospital.org"})
+        await db["users"].insert_one(
+            {
+                "_id": ObjectId(admin_id),
+                "email": "admin@production-hospital.org",
+                "password_hash": auth_svc.hash_password("AdminSecurePassword10!"),
+                "role": UserRole.ADMIN.value,
+                "is_active": True,
+                "is_demo": False,
+                "created_at": datetime.now(UTC),
+                "totp_enrolled": True,
+            }
         )
-        assert res_reg.status_code == 422, f"Expected 422, got {res_reg.status_code}: {res_reg.text}"
+        admin_token, _ = auth_svc.create_access_token(user_id=admin_id, role=UserRole.ADMIN.value)
 
-        # 2. Admin staff creation with .local is rejected
-        res_staff = await client.post(
-            "/admin/users",
-            headers={"Authorization": f"Bearer {admin_token}"},
-            json={
-                "email": "demo.screener@oncolink.local",
-                "password": "ValidPassword10!",
-                "role": "screener",
-            },
-        )
-        assert res_staff.status_code == 422, f"Expected 422, got {res_staff.status_code}: {res_staff.text}"
+        async with AsyncClient(
+            transport=ASGITransport(app=prod_app),
+            base_url="http://testserver",
+        ) as client:
+            # 1. Patient registration with .local is rejected
+            res_reg = await client.post(
+                "/auth/register",
+                json={
+                    "email": "demo.patient@oncolink.local",
+                    "password": "ValidPassword10!",
+                    "date_of_birth": "1990-01-01",
+                    "consent_version": "v1",
+                    "consent_accepted": True,
+                },
+            )
+            assert res_reg.status_code == 422, f"Expected 422, got {res_reg.status_code}: {res_reg.text}"
 
-        # 3. Legitimate production email address succeeds
-        res_valid = await client.post(
-            "/auth/register",
-            json={
-                "email": "real.patient@production-hospital.org",
-                "password": "ValidPassword10!",
-                "date_of_birth": "1990-01-01",
-                "consent_version": "v1",
-                "consent_accepted": True,
-            },
-        )
-        assert res_valid.status_code == 201
+            # 2. Admin staff creation with .local is rejected
+            res_staff = await client.post(
+                "/admin/users",
+                headers={"Authorization": f"Bearer {admin_token}"},
+                json={
+                    "email": "demo.screener@oncolink.local",
+                    "password": "ValidPassword10!",
+                    "role": "screener",
+                },
+            )
+            assert res_staff.status_code == 422, f"Expected 422, got {res_staff.status_code}: {res_staff.text}"
+
+            # 3. Legitimate production email address succeeds
+            res_valid = await client.post(
+                "/auth/register",
+                json={
+                    "email": "real.patient@production-hospital.org",
+                    "password": "ValidPassword10!",
+                    "date_of_birth": "1990-01-01",
+                    "consent_version": "v1",
+                    "consent_accepted": True,
+                },
+            )
+            assert res_valid.status_code == 201
+    finally:
+        await close_db()
