@@ -19,7 +19,6 @@ def test_settings() -> Settings:
         "?replicaSet=rs0&authSource=oncolink"
     )
     mongo_uri = os.getenv("MONGO_TEST_URI", default_test_uri)
-    minio_endpoint = os.getenv("MINIO_ENDPOINT", "minio:9000")
 
     return Settings(
         project_name="OncoLink-Test",
@@ -27,7 +26,18 @@ def test_settings() -> Settings:
         log_level="WARNING",
         mongo_uri=mongo_uri,
         mongo_db_name="oncolink_test",
-        minio_endpoint=minio_endpoint,
+        jwt_secret="test_jwt_secret_must_be_very_long_and_secure_64_chars_for_tests!",
+        totp_encryption_key="mO4YZOqlOWz_0Q2XD5Da5sfoL6n13xlA8PRLnvpI3Q8=",
+        demo_patient_email="demo.patient@oncolink.local",
+        demo_patient_password="Patient#Sec2026!P",
+        demo_screener_email="demo.screener@oncolink.local",
+        demo_screener_password="Screener#Sec2026!S",
+        demo_doctor_email="demo.doctor@oncolink.local",
+        demo_doctor_password="Doctor#Sec2026!D",
+        demo_hospital_coordinator_email="demo.coordinator@oncolink.local",
+        demo_hospital_coordinator_password="Coord#Sec2026!C",
+        demo_admin_email="demo.admin@oncolink.local",
+        demo_admin_password="Admin#Sec2026!A",
     )
 
 

@@ -36,6 +36,53 @@
 
 ---
 
+## Security & Environment Configuration
+
+All cryptographic secrets, database credentials, and session keys are loaded exclusively from environment variables in `.env` (never committed).
+
+### Generating Cryptographic Secrets
+
+Generate strong random secrets before deployment using the following commands:
+
+- **JWT Secret Key (`JWT_SECRET`):**
+  ```powershell
+  python -c "import secrets; print(secrets.token_hex(32))"
+  ```
+- **TOTP Encryption Key (`TOTP_ENCRYPTION_KEY`):**
+  ```powershell
+  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+  ```
+
+### Authentication & Role Architecture
+
+- **Five Roles:** `patient`, `screener`, `doctor`, `hospital_coordinator`, `admin`.
+- **Registration:** Patients self-register with explicit acceptance of the current active informed consent version (`POST /auth/register`). Staff roles (`screener`, `doctor`, `hospital_coordinator`, `admin`) are provisioned exclusively by administrators (`POST /admin/users`).
+- **Passwords:** Hashed with Argon2id. Minimum length of 10 characters, strictly prohibited from matching the email address.
+- **Sessions:** Short-lived 15-minute access JWTs. Opaque refresh tokens stored only as SHA-256 hashes, rotated on every refresh, delivered via `httpOnly`, `SameSite=Strict` cookies.
+- **Reuse Detection:** Replaying an already rotated refresh token triggers automatic revocation of the entire token family and logs a `refresh_reuse` security audit event.
+- **Account Lockout:** 5 consecutive failed login attempts trigger an automatic 15-minute lockout against the target account. Unknown emails and invalid passwords return an identical generic error.
+- **Two-Factor Authentication (TOTP):** Mandatory for `doctor` and `admin` roles. TOTP secrets are encrypted at rest with Fernet. Enrolment issues 8 single-use recovery codes stored as SHA-256 hashes.
+- **Doctor Verification Guard:** Clinical sign-off endpoints enforce `require_verified_doctor`, rejecting doctors whose status is `pending` or `rejected`.
+- **Immutable Audit Trail:** All auth lifecycle events (`login_success`, `login_failure`, `lockout`, `logout`, `refresh_reuse`, `totp_enrollment`, `user_creation`, `verification_changes`, `deactivation`) append to the `audit_log` collection via `AuditService` (which purposefully exposes zero update or delete methods).
+
+---
+
+## Demonstration User Seeding
+
+To seed one demonstration account for each role:
+```powershell
+docker compose exec backend python -m app.cli seed-demo-users
+```
+
+**Seeder Safety Rules:**
+1. Refuses to run if `ENVIRONMENT=production` or `ENV=production`.
+2. Refuses to run if any required demo credential is missing from `.env`.
+3. Refuses to run if any password violates password strength rules ($\ge 10$ characters, not equal to email).
+4. Refuses to run if passwords are shared across accounts (each role must have a distinct password).
+5. All seeded accounts are flagged with `is_demo: true`.
+
+---
+
 ## Running the Application
 
 ### Start the Full Stack (Docker)
@@ -46,7 +93,10 @@ docker compose up -d
 
 ### Access Points
 - **Frontend App:** http://127.0.0.1:5173
-- **Backend Health Check:** http://127.0.0.1:8000/health
+- **Dev Component Gallery:** http://127.0.0.1:5173/dev/components
+- **Minimal Health Check (Public):** http://127.0.0.1:8000/health
+- **Diagnostic Details (Admin Only):** http://127.0.0.1:8000/health/details
+- **Current Informed Consent (Public):** http://127.0.0.1:8000/consent/current
 - **FastAPI OpenAPI Docs:** http://127.0.0.1:8000/docs
 - **Image Storage:** Internal MongoDB GridFS (served only via authenticated backend endpoints)
 
@@ -76,12 +126,13 @@ npm run test
 ```powershell
 npm run test:backend
 ```
-*(Executes pytest inside the backend container against an isolated replica set test database, testing health, transaction rollback/commit atomicity, and GridFS save/open/delete operations).*
+*(Executes 30 test cases in pytest covering role cross-matrix enforcement, unauthenticated rejection, argon2 hashing, refresh rotation & reuse detection, account lockout, TOTP enrollment/login, recovery codes, consent verification, and AuditService immutability).*
 
-### Run Frontend Smoke Tests
+### Run Frontend Tests Only
 ```powershell
 npm run test:frontend
 ```
+*(Executes 17 vitest test cases covering color contrast math, StatusMarker dual-coding, accessible form fields, keyboard sortable tables, and axe-core zero-violation audits).*
 
 ---
 
@@ -100,12 +151,4 @@ npm run lint:backend
 ### Frontend Linting & Typecheck (ESLint & TypeScript)
 ```powershell
 npm run lint:frontend
-npm run typecheck
 ```
-
----
-
-## Architecture Decisions
-
-Authoritative domain and technical decisions are documented in [docs/DECISIONS.md](docs/DECISIONS.md).  
-Detailed behavior is in [docs/SPEC.md](docs/SPEC.md) and interface guidelines are in [docs/DESIGN.md](docs/DESIGN.md).

@@ -42,3 +42,28 @@ This document records authoritative technical and architectural decisions for th
   2. **Atomic Consistency & Simplicity:** Keeping clinical images within the MongoDB replica set enables unified backups, disaster recovery, and consistent data lifecycle management alongside case records and audit logs.
   3. **Privacy & Security by Design:** Clinical mouth photographs must never be exposed via public S3 bucket URLs or pre-signed links. Serving images strictly through authenticated backend endpoints enforces role-based access control and comprehensive audit logging on every image view.
   4. **Modularity:** Encapsulating operations behind the `StorageService` interface ensures that if an institutional deployment requires enterprise S3 or Azure Blob Storage in the future, it can be swapped without touching API or domain logic.
+
+## Decision 7: Role Provisioning and Clinical Verification Gateways
+
+* **Decision:** The system strictly partitions account registration: participants self-register with role `patient`, whereas clinical and operational staff (`screener`, `doctor`, `hospital_coordinator`, `admin`) are provisioned exclusively by administrators. Medical doctors require a two-stage credentialing lifecycle: registration number recording followed by administrative status verification (`pending` -> `verified` or `rejected`).
+* **Rationale:** Unverified actors must never have the authority to sign diagnostic consults or issue referral orders. The `require_verified_doctor` gateway enforces that unverified doctors are blocked from clinical sign-off routes.
+
+## Decision 8: Session Security, Refresh Token Rotation, and Family-Wide Reuse Invalidation
+
+* **Decision:** Access tokens are short-lived (15 minutes). Refresh tokens are opaque, stored in the database strictly as SHA-256 hashes, delivered in an `httpOnly`, `SameSite=Strict` cookie, and rotated on every request. Each refresh token belongs to a cryptographic `family_id`. If an already rotated token is replayed, the backend immediately revokes the entire family and triggers a security audit event (`refresh_reuse`).
+* **Rationale:** Mobile devices in field screening camps and community health clinics operate over untrusted networks. Immediate rotation minimizes the window of token theft, while family-wide revocation immediately neutralizes intercepted tokens and forces re-authentication.
+
+## Decision 9: Two-Factor Authentication (TOTP) and Encryption at Rest
+
+* **Decision:** TOTP two-factor authentication is mandatory for doctors and administrators. Base32 TOTP secrets are encrypted at rest using AES-CBC/Fernet with a 32-byte key from the environment. Enrolment generates eight single-use recovery codes stored exclusively as SHA-256 hashes. Login is strictly two-step: password verification issues an ephemeral 5-minute intermediate token (`temp_token`), which must be exchanged with a valid TOTP code or recovery code.
+* **Rationale:** Doctors sign legally binding clinical referral sheets and consult notes; administrators manage accounts and access logs. Requiring TOTP protects patient data from credential stuffing. Storing secrets encrypted at rest and recovery codes as hashes ensures that even a database dump does not compromise second factors.
+
+## Decision 10: Append-Only Audit Trail Architecture
+
+* **Decision:** The `AuditService` is backed by an append-only `audit_log` MongoDB collection and strictly exposes insert and read methods, purposefully exposing zero update, modify, or delete methods. The service enforces recursive credential scrubbing before writing.
+* **Rationale:** Regulatory compliance and clinical traceability require an immutable audit trail of views, transitions, credential changes, and security events. Preventing mutation at the service interface level guarantees that audit records cannot be altered or purged by application bugs.
+
+## Decision 11: Versioned Participant Informed Consent
+
+* **Decision:** Patient self-registration requires explicit acceptance of the current active versioned consent text. The backend verifies the submitted version against the current file-backed text, records an immutable consent record in `consents` with the canonical text SHA-256 hash, and exposes `GET /consent/current` publicly.
+* **Rationale:** In an academic research prototype involving human oral photography, participant autonomy and compliance with ethical standards require that consent is fully verifiable, version-tracked, and retrievable in plain language without ambiguity.

@@ -1,6 +1,7 @@
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
+import pymongo
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorClientSession, AsyncIOMotorDatabase
 
 from app.config import Settings, get_settings
@@ -10,6 +11,7 @@ T = TypeVar("T")
 
 # Global client reference
 _client: AsyncIOMotorClient | None = None
+_current_db_name: str | None = None
 
 
 def create_mongo_client(settings: Settings | None = None) -> AsyncIOMotorClient:
@@ -33,8 +35,33 @@ def get_client() -> AsyncIOMotorClient:
 def get_db(db_name: str | None = None) -> AsyncIOMotorDatabase:
     """Get the database instance."""
     client = get_client()
-    name = db_name or get_settings().mongo_db_name
+    name = db_name or _current_db_name or get_settings().mongo_db_name
     return client[name]
+
+
+def get_database(db_name: str | None = None) -> AsyncIOMotorDatabase:
+    """Alias for get_db."""
+    return get_db(db_name)
+
+
+async def init_indexes(db: AsyncIOMotorDatabase) -> None:
+    """Ensure core database indexes and unique constraints are established."""
+    try:
+        # Users email uniqueness
+        await db["users"].create_index("email", unique=True)
+        # Refresh tokens hash uniqueness & lookups
+        await db["refresh_tokens"].create_index("token_hash", unique=True)
+        await db["refresh_tokens"].create_index("family_id")
+        await db["refresh_tokens"].create_index("user_id")
+        # Audit log index
+        await db["audit_log"].create_index([("timestamp", pymongo.DESCENDING)])
+        await db["audit_log"].create_index("event_type")
+        await db["audit_log"].create_index("actor_id")
+        # Consents index
+        await db["consents"].create_index("user_id")
+        logger.info("Database indexes initialized successfully")
+    except Exception as exc:
+        logger.warning("Index initialization notice", extra={"error": str(exc)})
 
 
 async def init_db(settings: Settings | None = None) -> AsyncIOMotorClient:
@@ -42,13 +69,16 @@ async def init_db(settings: Settings | None = None) -> AsyncIOMotorClient:
     Initialize MongoDB client and verify connectivity.
     Refuses to start if MongoDB is unreachable (per specification rule).
     """
-    global _client
+    global _client, _current_db_name
     cfg = settings or get_settings()
+    _current_db_name = cfg.mongo_db_name
     client = create_mongo_client(cfg)
     try:
         # Ping the admin database to verify connectivity and replica set reachability
         await client.admin.command("ping")
         logger.info("Connected to MongoDB successfully", extra={"db": cfg.mongo_db_name})
+        db = client[cfg.mongo_db_name]
+        await init_indexes(db)
     except Exception as exc:
         logger.critical(
             "Failed to connect to MongoDB. Refusing to start.",

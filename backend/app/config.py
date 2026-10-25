@@ -36,7 +36,23 @@ class Settings(BaseSettings):
     # Security & Tokens
     jwt_secret: str = "change_this_to_a_secure_random_hex_key_before_production"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 60
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+
+    # TOTP Encryption Key at rest (Fernet key, 32 url-safe base64-encoded bytes)
+    totp_encryption_key: str = "mO4YZOqlOWz_0Q2XD5Da5sfoL6n13xlA8PRLnvpI3Q8="
+
+    # Demo User Seed Configuration
+    demo_patient_email: str | None = None
+    demo_patient_password: str | None = None
+    demo_screener_email: str | None = None
+    demo_screener_password: str | None = None
+    demo_doctor_email: str | None = None
+    demo_doctor_password: str | None = None
+    demo_hospital_coordinator_email: str | None = None
+    demo_hospital_coordinator_password: str | None = None
+    demo_admin_email: str | None = None
+    demo_admin_password: str | None = None
 
     # Model Locking
     model_version: str = "1.0.0-locked"

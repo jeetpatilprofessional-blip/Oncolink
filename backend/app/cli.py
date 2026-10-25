@@ -1,0 +1,187 @@
+import asyncio
+import os
+import sys
+from datetime import UTC, datetime
+
+from app.config import get_settings
+from app.database import close_db, init_db
+from app.models.audit import AuditEventType
+from app.models.user import DoctorVerificationStatus, UserRole
+from app.services.audit_service import AuditService
+from app.services.auth_service import AuthService
+from app.services.consent_service import ConsentService
+
+
+async def seed_demo_users() -> None:
+    """
+    Seeds one demonstration account per role into the database.
+
+    Safety constraints enforced:
+    1. Refuses to run if ENVIRONMENT or ENV is 'production'.
+    2. Refuses to run if any required demo credential environment variable is missing.
+    3. Refuses to run if any password violates security policies (min length 10, not equal to email).
+    4. Refuses to run if passwords are shared across accounts (each role must have a distinct password).
+    5. Marks all created accounts with is_demo=True.
+    """
+    settings = get_settings()
+
+    # 1. Guard against production environment
+    env_str = os.getenv("ENV", settings.environment).strip().lower()
+    if env_str == "production":
+        print("ERROR: Demo user seeding is strictly forbidden in production environments (ENV=production).")
+        sys.exit(1)
+
+    # 2. Gather demo user specifications
+    demo_specs = [
+        {
+            "role": UserRole.PATIENT,
+            "email": settings.demo_patient_email,
+            "password": settings.demo_patient_password,
+            "extra": {},
+        },
+        {
+            "role": UserRole.SCREENER,
+            "email": settings.demo_screener_email,
+            "password": settings.demo_screener_password,
+            "extra": {},
+        },
+        {
+            "role": UserRole.DOCTOR,
+            "email": settings.demo_doctor_email,
+            "password": settings.demo_doctor_password,
+            "extra": {
+                "registration_number": "DCI-DEMO-2026-042",
+                "verification_status": DoctorVerificationStatus.VERIFIED.value,
+                "verified_by": "system_seeder",
+                "verified_at": datetime.now(UTC),
+            },
+        },
+        {
+            "role": UserRole.HOSPITAL_COORDINATOR,
+            "email": settings.demo_hospital_coordinator_email,
+            "password": settings.demo_hospital_coordinator_password,
+            "extra": {},
+        },
+        {
+            "role": UserRole.ADMIN,
+            "email": settings.demo_admin_email,
+            "password": settings.demo_admin_password,
+            "extra": {},
+        },
+    ]
+
+    # 3. Check for missing credentials
+    missing = []
+    passwords = []
+    for spec in demo_specs:
+        role_name = spec["role"].value
+        if not spec["email"]:
+            missing.append(f"DEMO_{role_name.upper()}_EMAIL")
+        if not spec["password"]:
+            missing.append(f"DEMO_{role_name.upper()}_PASSWORD")
+        else:
+            passwords.append(spec["password"])
+
+    if missing:
+        print(f"ERROR: Cannot seed demo users. Missing required environment variables:\n  {', '.join(missing)}")
+        sys.exit(1)
+
+    # 4. Enforce no shared passwords rule
+    if len(set(passwords)) != len(passwords):
+        print("ERROR: Shared passwords detected. Every demo account must have a unique, distinct password.")
+        sys.exit(1)
+
+    # 5. Initialize database connection
+    client = await init_db(settings)
+    db = client[settings.mongo_db_name]
+    audit_service = AuditService(db)
+    auth_service = AuthService(db, settings, audit_service)
+    consent_service = ConsentService(db)
+
+    print("Connected to database. Verifying and seeding demo accounts...")
+
+    # 6. Validate password policies and insert/update accounts
+    for spec in demo_specs:
+        email = spec["email"].strip().lower()
+        password = spec["password"]
+        role = spec["role"]
+
+        # Validate password strength rule
+        try:
+            auth_service.validate_password_strength(password, email)
+        except ValueError as err:
+            print(f"ERROR: Invalid password for {email}: {err}")
+            await close_db()
+            sys.exit(1)
+
+        password_hash = auth_service.hash_password(password)
+        now = datetime.now(UTC)
+
+        user_doc = {
+            "email": email,
+            "password_hash": password_hash,
+            "role": role.value,
+            "is_active": True,
+            "is_demo": True,
+            "created_at": now,
+            "failed_login_attempts": 0,
+            "locked_until": None,
+            "totp_enrolled": False,
+            "totp_secret_encrypted": None,
+            "totp_recovery_codes_hashes": [],
+            **spec["extra"],
+        }
+
+        # Upsert by email
+        result = await db["users"].update_one(
+            {"email": email},
+            {"$set": user_doc},
+            upsert=True,
+        )
+
+        user_id = str(result.upserted_id) if result.upserted_id else None
+        if not user_id:
+            existing = await db["users"].find_one({"email": email})
+            user_id = str(existing["_id"])
+
+        # If patient, ensure consent is logged
+        if role == UserRole.PATIENT:
+            current_consent = consent_service.get_current_consent()
+            existing_consent = await consent_service.get_consent_for_user(user_id)
+            if not existing_consent:
+                await consent_service.record_consent(
+                    user_id=user_id,
+                    version=current_consent.version,
+                    captured_by="self_demo",
+                )
+
+        # Audit entry
+        await audit_service.insert(
+            event_type=AuditEventType.USER_CREATION,
+            actor_id="system_seeder",
+            actor_role="system",
+            target_user_id=user_id,
+            details={"email": email, "role": role.value, "is_demo": True},
+        )
+        print(f"  [OK] Seeded {role.value} account: {email}")
+
+    await close_db()
+    print("Demo user seeding completed successfully.")
+
+
+def main() -> None:
+    """CLI dispatcher."""
+    if len(sys.argv) < 2:
+        print("Usage: python -m app.cli [seed-demo-users]")
+        sys.exit(1)
+
+    command = sys.argv[1].lower()
+    if command == "seed-demo-users":
+        asyncio.run(seed_demo_users())
+    else:
+        print(f"Unknown command: '{command}'. Available commands: seed-demo-users")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

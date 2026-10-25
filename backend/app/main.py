@@ -4,6 +4,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.admin import router as admin_router
+from app.api.auth import router as auth_router
+from app.api.consent import router as consent_router
 from app.api.health import router as health_router
 from app.config import Settings, get_settings
 from app.database import close_db, init_db
@@ -52,11 +55,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Register routers
+    # Register Routers
     app.include_router(health_router)
+    app.include_router(auth_router)
+    app.include_router(consent_router)
+    app.include_router(admin_router)
 
     return app
 
 
-# Default app instance for ASGI servers (Uvicorn)
+# Default app instance for ASGI servers (uvicorn)
 app = create_app()
