@@ -18,7 +18,7 @@ export const DoctorHomePage: React.FC = () => {
             {t("home.doctor_title")}
           </h1>
           {user?.registration_number && (
-            <span className="text-xs font-mono text-ink/70 bg-white px-2 py-1 rounded-xs border border-rule self-start sm:self-auto">
+            <span className="text-xs tabular-nums text-ink/70 bg-white px-2 py-1 rounded-xs border border-rule self-start sm:self-auto">
               {t("admin.doctor_registration", { reg: user.registration_number })}
             </span>
           )}

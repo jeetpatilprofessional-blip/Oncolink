@@ -3,14 +3,18 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context";
 import { AdminPage } from "./pages/AdminPage";
+import { CapturePage } from "./pages/CapturePage";
 import { CoordinatorHomePage } from "./pages/CoordinatorHomePage";
 import { DoctorHomePage } from "./pages/DoctorHomePage";
 import { ForbiddenPage } from "./pages/ForbiddenPage";
 import { HealthPage } from "./pages/HealthPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PatientHomePage } from "./pages/PatientHomePage";
+import { QuestionnairePage } from "./pages/QuestionnairePage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ReviewSubmitPage } from "./pages/ReviewSubmitPage";
 import { ScreenerHomePage } from "./pages/ScreenerHomePage";
+import { ScreenerNewPersonPage } from "./pages/ScreenerNewPersonPage";
 import { TwoFactorSetupPage } from "./pages/TwoFactorSetupPage";
 
 const DevComponentsPage = import.meta.env.DEV
@@ -80,6 +84,14 @@ export const AppRoutes: React.FC = () => {
 
       <Route element={<ProtectedRoute allowedRoles={["screener"]} />}>
         <Route path="/screener" element={<ScreenerHomePage />} />
+        <Route path="/screener/new-person" element={<ScreenerNewPersonPage />} />
+      </Route>
+
+      {/* Case Screening Flow Routes (Patient self-screening and Screener intake) */}
+      <Route element={<ProtectedRoute allowedRoles={["patient", "screener"]} />}>
+        <Route path="/cases/:id/capture" element={<CapturePage />} />
+        <Route path="/cases/:id/history" element={<QuestionnairePage />} />
+        <Route path="/cases/:id/review" element={<ReviewSubmitPage />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={["doctor"]} />}>

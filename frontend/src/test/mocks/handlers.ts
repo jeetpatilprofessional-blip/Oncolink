@@ -34,6 +34,17 @@ export const mockUsers = [
     verification_status: null,
     totp_enrolled: false,
   },
+  {
+    id: "user-screener-1",
+    email: "screener@oncolink.org",
+    role: "screener",
+    is_active: true,
+    is_demo: false,
+    created_at: "2026-10-25T10:15:00Z",
+    registration_number: null,
+    verification_status: null,
+    totp_enrolled: false,
+  },
 ];
 
 export const mockConsent = {
@@ -248,6 +259,109 @@ export const handlers = [
     return HttpResponse.json({
       ...user,
       is_active: body.is_active,
+    });
+  }),
+
+  // Cases: List
+  http.get("http://127.0.0.1:8000/cases", () => {
+    return HttpResponse.json([
+      {
+        id: "case-mock-001",
+        reference: "0412-17",
+        status: "draft",
+        patient_id: "patient-mock-1",
+        created_at: "2026-10-25T11:00:00Z",
+        updated_at: "2026-10-25T11:00:00Z",
+        images: [],
+      },
+    ]);
+  }),
+
+  // Cases: Get one
+  http.get("http://127.0.0.1:8000/cases/:id", ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      reference: "0412-17",
+      status: "draft",
+      patient_id: "patient-mock-1",
+      created_at: "2026-10-25T11:00:00Z",
+      updated_at: "2026-10-25T11:00:00Z",
+      images: [],
+    });
+  }),
+
+  // Cases: Create
+  http.post("http://127.0.0.1:8000/cases", () => {
+    return HttpResponse.json({
+      id: "case-new-999",
+      reference: "0412-99",
+      status: "draft",
+      patient_id: "patient-mock-1",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }),
+
+  // Patients: Create
+  http.post("http://127.0.0.1:8000/patients", async ({ request }) => {
+    const body = (await request.json()) as { date_of_birth: string; language?: string; contact?: string };
+    return HttpResponse.json({
+      id: `pat-${Date.now()}`,
+      created_by: "user-screener-1",
+      date_of_birth: body.date_of_birth,
+      language: body.language || "en",
+      contact: body.contact || null,
+      erased: false,
+      is_demo: false,
+      created_at: new Date().toISOString(),
+    });
+  }),
+
+  // Consent: Submit
+  http.post("http://127.0.0.1:8000/consent", () => {
+    return HttpResponse.json({
+      id: "consent-rec-1",
+      patient_id: "patient-mock-1",
+      version: "1.0",
+      language: "en",
+      captured_by: "self",
+      created_at: new Date().toISOString(),
+    });
+  }),
+
+  // Cases: Save history
+  http.post("http://127.0.0.1:8000/cases/:id/history", ({ params }) => {
+    return HttpResponse.json({
+      message: "Case history recorded successfully",
+      case_id: params.id,
+      red_flags: [],
+      risk_factors: [],
+    });
+  }),
+
+  // Cases: Upload image
+  http.post("http://127.0.0.1:8000/cases/:id/images", ({ params }) => {
+    return HttpResponse.json({
+      id: `img-${Date.now()}`,
+      case_id: params.id,
+      site: "tongue_top",
+      view_type: "lesion_closeup",
+      storage_id: "gridfs-id-123",
+      quality_status: "accepted",
+      reason_codes: [],
+      quality_scores: { blur: 150, brightness: 120 },
+      created_at: new Date().toISOString(),
+    });
+  }),
+
+  // Cases: Submit
+  http.post("http://127.0.0.1:8000/cases/:id/submit", ({ params }) => {
+    return HttpResponse.json({
+      case_id: params.id,
+      status: "queued",
+      red_flag: false,
+      failed_images: [],
+      message: "Case submitted successfully and queued for clinical review",
     });
   }),
 ];

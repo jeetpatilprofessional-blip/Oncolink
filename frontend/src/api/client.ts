@@ -342,3 +342,117 @@ export async function deactivateUser(userId: string): Promise<AdminUser> {
   }
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Screening, Questionnaire, Image Upload & Submission Endpoints
+// ---------------------------------------------------------------------------
+
+export async function listCases(): Promise<import("./types").CaseStatusResponse[]> {
+  const res = await apiFetch("/cases", { method: "GET" });
+  if (!res.ok) {
+    throw await parseErrorResponse(res);
+  }
+  return res.json();
+}
+
+export async function getCase(caseId: string): Promise<import("./types").CaseStatusResponse> {
+  const res = await apiFetch(`/cases/${caseId}`, { method: "GET" });
+  if (!res.ok) {
+    throw await parseErrorResponse(res);
+  }
+  return res.json();
+}
+
+export async function createCase(patientId?: string): Promise<import("./types").CaseStatusResponse> {
+  const res = await apiFetch("/cases", {
+    method: "POST",
+    body: JSON.stringify({ patient_id: patientId || undefined }),
+  });
+  if (!res.ok) {
+    throw await parseErrorResponse(res);
+  }
+  return res.json();
+}
+
+export async function createPatient(
+  payload: import("./types").PatientCreatePayload
+): Promise<import("./types").PatientResponse> {
+  const res = await apiFetch("/patients", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw await parseErrorResponse(res);
+  }
+  return res.json();
+}
+
+export async function submitConsent(
+  payload: import("./types").ConsentSubmitPayload
+): Promise<unknown> {
+  const res = await apiFetch("/consent", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw await parseErrorResponse(res);
+  }
+  return res.json();
+}
+
+export async function saveCaseHistory(
+  caseId: string,
+  history: import("./types").CaseHistoryPayload
+): Promise<import("./types").CaseHistoryResponse> {
+  const res = await apiFetch(`/cases/${caseId}/history`, {
+    method: "POST",
+    body: JSON.stringify(history),
+  });
+  if (!res.ok) {
+    throw await parseErrorResponse(res);
+  }
+  return res.json();
+}
+
+export async function uploadCaseImage(
+  caseId: string,
+  file: Blob | File,
+  site: import("./types").AnatomicalSite,
+  viewType: import("./types").ViewType
+): Promise<import("./types").ImageUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file, "capture.jpg");
+  formData.append("site", site);
+  formData.append("view_type", viewType);
+
+  const res = await apiFetch(`/cases/${caseId}/images`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    throw await parseErrorResponse(res);
+  }
+  return res.json();
+}
+
+export async function getCaseImageBlob(caseId: string, imageId: string): Promise<Blob> {
+  const res = await apiFetch(`/cases/${caseId}/images/${imageId}`, {
+    method: "GET",
+  });
+  if (!res.ok) {
+    throw await parseErrorResponse(res);
+  }
+  return res.blob();
+}
+
+export async function submitCase(
+  caseId: string
+): Promise<import("./types").CaseSubmitResponse> {
+  const res = await apiFetch(`/cases/${caseId}/submit`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw await parseErrorResponse(res);
+  }
+  return res.json();
+}

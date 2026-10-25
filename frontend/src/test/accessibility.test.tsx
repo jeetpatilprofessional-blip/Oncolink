@@ -1,15 +1,20 @@
 import { render } from "@testing-library/react";
 import axe from "axe-core";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { setAccessToken } from "../api/client";
 import { AuthProvider } from "../context/AuthContext";
 import { AdminPage } from "../pages/AdminPage";
+import { CapturePage } from "../pages/CapturePage";
 import { DoctorHomePage } from "../pages/DoctorHomePage";
 import { ForbiddenPage } from "../pages/ForbiddenPage";
 import { LoginPage } from "../pages/LoginPage";
 import { PatientHomePage } from "../pages/PatientHomePage";
+import { QuestionnairePage } from "../pages/QuestionnairePage";
 import { RegisterPage } from "../pages/RegisterPage";
+import { ReviewSubmitPage } from "../pages/ReviewSubmitPage";
+import { ScreenerHomePage } from "../pages/ScreenerHomePage";
+import { ScreenerNewPersonPage } from "../pages/ScreenerNewPersonPage";
 import { TwoFactorSetupPage } from "../pages/TwoFactorSetupPage";
 
 const axeOptions = {
@@ -119,6 +124,87 @@ describe("Axe-Core Accessibility Checks on All Screens", () => {
     );
 
     await findByText(/Administrator Console/i);
+    const results = await axe.run(container, axeOptions);
+    expect(results.violations).toEqual([]);
+  });
+
+  it("ScreenerHomePage has zero accessibility violations", async () => {
+    setAccessToken("mock-screener-access-jwt");
+    const { container, findByText } = render(
+      <AuthProvider>
+        <MemoryRouter>
+          <ScreenerHomePage />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    await findByText(/Community Screener Dashboard/i);
+    const results = await axe.run(container, axeOptions);
+    expect(results.violations).toEqual([]);
+  });
+
+  it("ScreenerNewPersonPage has zero accessibility violations", async () => {
+    setAccessToken("mock-screener-access-jwt");
+    const { container, findByText } = render(
+      <AuthProvider>
+        <MemoryRouter>
+          <ScreenerNewPersonPage />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    await findByText(/Screen a New Person/i);
+    const results = await axe.run(container, axeOptions);
+    expect(results.violations).toEqual([]);
+  });
+
+  it("QuestionnairePage has zero accessibility violations", async () => {
+    setAccessToken("mock-patient-access-jwt");
+    const { container, findByText } = render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/cases/case-test-1/history"]}>
+          <Routes>
+            <Route path="/cases/:id/history" element={<QuestionnairePage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    await findByText(/Health History Questionnaire/i);
+    const results = await axe.run(container, axeOptions);
+    expect(results.violations).toEqual([]);
+  });
+
+  it("CapturePage has zero accessibility violations", async () => {
+    setAccessToken("mock-patient-access-jwt");
+    const { container, findByText } = render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/cases/case-test-1/capture"]}>
+          <Routes>
+            <Route path="/cases/:id/capture" element={<CapturePage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    await findByText(/Select Oral Examination Site/i);
+    const results = await axe.run(container, axeOptions);
+    expect(results.violations).toEqual([]);
+  });
+
+  it("ReviewSubmitPage has zero accessibility violations", async () => {
+    setAccessToken("mock-patient-access-jwt");
+    const { container, findByText } = render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/cases/case-test-1/review"]}>
+          <Routes>
+            <Route path="/cases/:id/review" element={<ReviewSubmitPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    await findByText(/Review & Submit Screening/i);
     const results = await axe.run(container, axeOptions);
     expect(results.violations).toEqual([]);
   });

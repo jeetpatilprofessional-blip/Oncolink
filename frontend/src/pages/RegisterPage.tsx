@@ -195,7 +195,7 @@ export const RegisterPage: React.FC = () => {
               <div
                 tabIndex={0}
                 aria-label={t("auth.consent_title")}
-                className="max-h-48 overflow-y-auto p-3.5 bg-paper border border-rule rounded-xs text-xs text-ink/80 leading-relaxed font-mono focus-visible:outline-2 focus-visible:outline-gentian focus-visible:outline-offset-2"
+                className="max-h-48 overflow-y-auto p-3.5 bg-paper border border-rule rounded-xs text-xs text-ink/80 leading-relaxed font-serif focus-visible:outline-2 focus-visible:outline-gentian focus-visible:outline-offset-2"
               >
                 {loadingConsent ? (
                   <p className="text-ink/60">Loading research consent terms...</p>

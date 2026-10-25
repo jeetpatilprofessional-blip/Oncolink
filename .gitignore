@@ -48,6 +48,7 @@ dist/
 
 # Local persistent data directories
 /data/
+.tmp_chrome*
 mongo_data/
 minio_data/
 

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 export type SortDirection = "asc" | "desc" | null;
 
-export interface Column<T> {
+export interface Column<T extends object = Record<string, unknown>> {
   key: keyof T | string;
   header: string;
   sortable?: boolean;
@@ -10,7 +10,7 @@ export interface Column<T> {
   render?: (row: T, index: number) => React.ReactNode;
 }
 
-export interface DataTableProps<T> {
+export interface DataTableProps<T extends object = Record<string, unknown>> {
   columns: Column<T>[];
   data: T[];
   density?: "dense" | "touch";
@@ -28,7 +28,7 @@ export interface DataTableProps<T> {
  * - Sortable columns operable via keyboard (Enter/Space)
  * - Tabular numerals on all data cells
  */
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T extends object>({
   columns,
   data,
   density = "dense",
@@ -70,8 +70,8 @@ export function DataTable<T extends Record<string, unknown>>({
       return data;
     }
     return [...data].sort((a, b) => {
-      const valA = a[sortKey];
-      const valB = b[sortKey];
+      const valA = (a as Record<string, unknown>)[sortKey];
+      const valB = (b as Record<string, unknown>)[sortKey];
 
       if (valA === valB) return 0;
       if (valA === undefined || valA === null) return 1;
@@ -162,7 +162,7 @@ export function DataTable<T extends Record<string, unknown>>({
               >
                 {columns.map((col) => {
                   const colKey = String(col.key);
-                  const cellValue = row[colKey];
+                  const cellValue = (row as Record<string, unknown>)[colKey];
                   return (
                     <td
                       key={colKey}

@@ -91,7 +91,7 @@ export const Nav: React.FC = () => {
 
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
-            <div className="text-xs text-ink/70 font-mono truncate max-w-[200px]" title={user.email}>
+            <div className="text-xs text-ink/70 tabular-nums truncate max-w-[200px]" title={user.email}>
               {user.email}
             </div>
             <div className="flex items-center gap-1.5 justify-end">

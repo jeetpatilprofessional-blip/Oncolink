@@ -143,7 +143,7 @@ export const AdminPage: React.FC = () => {
             )}
           </div>
           {row.registration_number && (
-            <span className="text-xs font-mono text-ink/70">
+            <span className="text-xs tabular-nums text-ink/70">
               {t("admin.doctor_registration", { reg: row.registration_number })}
             </span>
           )}

@@ -203,13 +203,27 @@ npm run test
 ```powershell
 npm run test:backend
 ```
-*(Executes 179 test cases in pytest covering role cross-matrix enforcement across 94 granular endpoint-persona cells, database-backed execution of all 35 allowed edges, pure function 3,174 transition evaluations, zero-edge admin invariant, `GET /auth/me`, CORS headers, unauthenticated rejection, argon2 hashing, refresh rotation & reuse detection, account lockout, TOTP enrollment/login, recovery codes, consent verification, AuditService immutability, adult-only age enforcement, rollback atomicity, concurrency conflict detection, and audit privacy partitioning).*
+*(Executes 213 test cases in pytest covering role cross-matrix enforcement across granular endpoint-persona cells, database-backed execution of all allowed state machine edges, red-flag truth tables, urgency heuristics, image magic bytes verification, EXIF stripping, GridFS image replacement, quality gate heuristics, and audit privacy partitioning).*
 
 ### Run Frontend Tests Only
 ```powershell
 npm run test:frontend
 ```
-*(Executes 38 vitest test cases covering registration date-of-birth input, client-side adult-only age validation, login 2-step flow, patient consent requirement, in-memory token security, single-flight refresh under parallel 401s, 2FA setup recovery codes confirmation, role route redirects, and axe-core zero-violation audits across all screens).*
+*(Executes 52 vitest test cases covering OralSiteMap state rendering and keyboard navigation, red-flag emergency banner triggers, submit preconditions checklist matching 422 errors, screener under-18 intake rejection without API calls, file input capture fallback, login/2FA authentication flows, and axe-core zero-violation audits across all application screens).*
+
+### End-to-End Smoke Test
+Run the automated screening intake and submission flow against the live backend stack:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-screening.ps1
+```
+*(Logs in as demo screener, registers a new participant profile, records in-person informed consent, creates a draft case, saves structured questionnaire history, generates synthetic checkered JPEG test images, uploads 1 lesion closeup and 2 context views, verifies authoritative quality evaluation, executes atomic submission, and purges all test records from MongoDB upon completion).*
+
+### Visual Regression & Screen Capture
+Capture all application screens at 360px and 1280px viewports with real authenticated sessions:
+```powershell
+node .\scripts\capture_screening_screenshots.js
+```
+All screenshots are output directly to `docs/screenshots/`.
 
 ---
 
