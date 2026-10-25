@@ -58,7 +58,7 @@ describe("Routing, Role Protection & Admin Management", () => {
     });
   });
 
-  it("redirects doctor without enrolled 2FA to /2fa/setup", async () => {
+  it("redirects doctor without enrolled 2FA or temp token to /login", async () => {
     server.use(
       http.get("http://127.0.0.1:8000/auth/me", () =>
         HttpResponse.json({ ...mockUsers[1], totp_enrolled: false })
@@ -77,10 +77,11 @@ describe("Routing, Role Protection & Admin Management", () => {
       </AuthProvider>
     );
 
+    // Unenrolled doctor without a temporary 2FA token in navigation state must authenticate through login
     await waitFor(() => {
-      expect(screen.getByText(/Set Up Two-Factor Authentication/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Sign in/i })).toBeInTheDocument();
       expect(
-        screen.getByText(/Two-factor authentication is mandatory for clinical and administrative accounts/i)
+        screen.getByText(/Sign in to access the ONCOLINK clinical portal/i)
       ).toBeInTheDocument();
     });
   });

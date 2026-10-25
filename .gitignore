@@ -58,3 +58,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Sensitive screenshots containing TOTP secrets or QR codes
+docs/screenshots/2fa-setup-*.png

@@ -7,6 +7,7 @@ import { AuthProvider } from "../context/AuthContext";
 import { LoginPage } from "../pages/LoginPage";
 import { RegisterPage } from "../pages/RegisterPage";
 import { TwoFactorSetupPage } from "../pages/TwoFactorSetupPage";
+import { AppRoutes } from "../App";
 import { server } from "./mocks/server";
 
 describe("Authentication Flows & Token Security", () => {
@@ -209,7 +210,9 @@ describe("Authentication Flows & Token Security", () => {
   it("blocks continuation on 2FA setup until recovery codes confirmation checkbox is ticked", async () => {
     render(
       <AuthProvider>
-        <MemoryRouter initialEntries={["/2fa/setup"]}>
+        <MemoryRouter
+          initialEntries={[{ pathname: "/2fa/setup", state: { temp_token: "mock-temp-token-valid" } }]}
+        >
           <TwoFactorSetupPage />
         </MemoryRouter>
       </AuthProvider>
@@ -251,5 +254,39 @@ describe("Authentication Flows & Token Security", () => {
     fireEvent.click(confirmCheckbox);
     expect(confirmCheckbox).not.toBeChecked();
     expect(continueBtn).toBeDisabled();
+  });
+
+  it("/2fa/setup is reachable only when a temporary token is in navigation state", async () => {
+    render(
+      <AuthProvider>
+        <MemoryRouter
+          initialEntries={[{ pathname: "/2fa/setup", state: { temp_token: "mock-temp-token-123" } }]}
+        >
+          <AppRoutes />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    // Reaches /2fa/setup because temp_token is present in navigation state
+    await waitFor(() => {
+      expect(screen.getByText(/Set Up Two-Factor Authentication/i)).toBeInTheDocument();
+    });
+  });
+
+  it("reloading or navigating to /2fa/setup without temporary token sends the user to login", async () => {
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/2fa/setup"]}>
+          <AppRoutes />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    // Since state is undefined (as happens on browser reload without active session), redirected to /login
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Sign in/i })).toBeInTheDocument();
+      expect(screen.getByText(/Sign in to access the ONCOLINK clinical portal/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Set Up Two-Factor Authentication/i)).not.toBeInTheDocument();
+    });
   });
 });

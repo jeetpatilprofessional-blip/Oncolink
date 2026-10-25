@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     project_name: str = "OncoLink"
     environment: str = "development"
+    allow_demo_local_emails: bool = True
     log_level: str = "INFO"
 
     backend_host: str = "0.0.0.0"

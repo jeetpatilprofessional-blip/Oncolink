@@ -51,7 +51,9 @@ describe("Axe-Core Accessibility Checks on All Screens", () => {
   it("TwoFactorSetupPage has zero accessibility violations", async () => {
     const { container, findByText } = render(
       <AuthProvider>
-        <MemoryRouter>
+        <MemoryRouter
+          initialEntries={[{ pathname: "/2fa/setup", state: { temp_token: "mock-temp-token-a11y" } }]}
+        >
           <TwoFactorSetupPage />
         </MemoryRouter>
       </AuthProvider>

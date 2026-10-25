@@ -208,26 +208,23 @@ This document defines the authoritative permissions, resource ownership rules, a
 
 ---
 
-## 4. Ambiguities & Open Decisions (`DECISION NEEDED`)
+## 4. Final Architecture & Permissions Decisions
 
-The following items are not fully specified in `docs/SPEC.md` and are cataloged here for explicit design resolution:
+The following architectural and workflow decisions are finalized for the ONCOLINK platform:
 
-1. **`DECISION NEEDED 1` (Doctor Case Release & Reassignment):**
-   *Context:* SPEC.md section 7 specifies automatic SLA re-assignment when urgent cases exceed 4 hours. Can an assigned doctor voluntarily release a claimed case back into the unassigned queue if they lack capacity, or must reassignments occur exclusively via timer or administrator escalation?
-   *Default Assumption:* A doctor may release an unreviewed case back to `queued` with a logged reason.
+1. **Doctor Case Release & Reassignment:**
+   - **Decision:** Yes, an assigned doctor may voluntarily release a claimed case back to the `queued` state. A mandatory reason must be provided, which is recorded in the immutable audit log (`audit_log`).
+   - **SLA Invariant:** Automatic SLA re-assignment timers (SPEC section 7: 4-hour urgent timeout) remain active concurrently.
 
-2. **`DECISION NEEDED 2` (Screener Camp/Team Shared Queue):**
-   *Context:* In community screening camps where 2 or more screeners work concurrently, should screeners see only their own individually captured cases (`created_by`), or cases captured by any screener at the same screening camp session?
-   *Default Assumption:* Screeners see exclusively cases created by their own user ID (`created_by == current_user.id`) to maintain strict data minimization and anti-probing guarantees.
+2. **Screener Visibility & Community Camps:**
+   - **Decision:** No shared visibility within screening camps. Each screener sees only cases they individually created (`case.created_by == current_user.id`).
+   - **Roadmap:** Camp-level shared queues are recorded as future work.
 
-3. **`DECISION NEEDED 3` (Guardian Proxy Access for Minors):**
-   *Context:* SPEC.md section 5.1 lists guardian consent for minors as a future-work item. When built, will the guardian manage the minor's case under their own patient account, or will a distinct dependent sub-account be provisioned?
-   *Default Assumption:* Retain adults-only self-screening for current prototype.
+3. **Minors and Guardianship:**
+   - **Decision:** Out of scope for this prototype. Self-registration is restricted to adults aged 18 and older; registration for users under 18 is blocked and documented as a platform limitation.
 
-4. **`DECISION NEEDED 4` (Hospital Coordinator Multi-Facility Assignment):**
-   *Context:* Can a single hospital coordinator manage appointments across multiple satellite clinics within the same hospital network, or is each coordinator account strictly bound to one facility ID?
-   *Default Assumption:* Strictly one hospital facility ID per coordinator account (`user.hospital_id`).
+4. **Hospital Coordinator Facility Boundary:**
+   - **Decision:** Strictly single-facility. One hospital coordinator belongs to exactly one hospital (`user.hospital_id`). Multi-hospital assignment is prohibited.
 
-5. **`DECISION NEEDED 5` (Clinician Audit History Visibility):**
-   *Context:* SPEC.md section 12 states every transition is audited. May a reviewing doctor see the prior audit entries of a case (e.g., retake requests, prior overrides by colleagues), or is audit trail inspection strictly an admin compliance tool?
-   *Default Assumption:* Doctors view case clinical timeline/status transitions (`GET /cases/{id}/timeline`), but raw audit log collection (`audit_log`) is accessible only by administrators.
+5. **Case History and Audit Trail Visibility:**
+   - **Decision:** Role-segregated visibility. Reviewing doctors see their case's clinical status timeline (`GET /cases/{id}/timeline`). Only administrators see the raw audit log (`GET /admin/audit-logs`), and administrators never see clinical oral photographs or diagnostic content.

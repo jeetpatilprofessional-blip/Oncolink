@@ -1,13 +1,9 @@
 from datetime import datetime
 from enum import Enum
 
-import email_validator
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-if "local" in email_validator.SPECIAL_USE_DOMAIN_NAMES:
-    email_validator.SPECIAL_USE_DOMAIN_NAMES = [
-        d for d in email_validator.SPECIAL_USE_DOMAIN_NAMES if d != "local"
-    ]
+from app.models.validators import OncoLinkEmail
 
 
 class UserRole(str, Enum):
@@ -25,21 +21,21 @@ class DoctorVerificationStatus(str, Enum):
 
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: OncoLinkEmail
     role: UserRole
     is_active: bool = True
     is_demo: bool = False
 
 
 class PatientRegisterRequest(BaseModel):
-    email: EmailStr
+    email: OncoLinkEmail
     password: str = Field(min_length=10)
     consent_version: str
     consent_accepted: bool
 
 
 class StaffUserCreate(BaseModel):
-    email: EmailStr
+    email: OncoLinkEmail
     password: str = Field(min_length=10)
     role: UserRole
     registration_number: str | None = None
@@ -53,7 +49,7 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    email: EmailStr
+    email: OncoLinkEmail
     role: UserRole
     is_active: bool = True
     is_demo: bool = False
@@ -69,7 +65,7 @@ class UserInDB(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    email: EmailStr
+    email: OncoLinkEmail
     password_hash: str
     role: UserRole
     is_active: bool = True

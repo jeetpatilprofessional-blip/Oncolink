@@ -31,10 +31,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Doctor and Admin accounts MUST complete 2FA enrollment before accessing protected routes
+  // Doctor and Admin accounts MUST complete 2FA enrollment before accessing protected routes.
+  // 2FA setup is strictly gated by a 2fa_pending temp_token in navigation state.
   const isHighPrivilege = user.role === "doctor" || user.role === "admin";
-  if (requireTotp && isHighPrivilege && !user.totp_enrolled && location.pathname !== "/2fa/setup") {
-    return <Navigate to="/2fa/setup" replace />;
+  if (requireTotp && isHighPrivilege && !user.totp_enrolled) {
+    if (location.pathname === "/2fa/setup" && (location.state as { temp_token?: string })?.temp_token) {
+      return <Outlet />;
+    }
+    return <Navigate to="/login" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {

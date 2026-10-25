@@ -69,6 +69,7 @@ class AuthService:
             "iat": int(now.timestamp()),
             "exp": int(exp.timestamp()),
             "type": "access",
+            "scope": "access",
         }
         token = jwt.encode(payload, self._settings.jwt_secret, algorithm=self._settings.jwt_algorithm)
         expires_in = int(expire_delta.total_seconds())
@@ -87,11 +88,17 @@ class AuthService:
             "iat": int(now.timestamp()),
             "exp": int(exp.timestamp()),
             "type": "2fa_pending",
+            "scope": "2fa_pending",
         }
         return jwt.encode(payload, self._settings.jwt_secret, algorithm=self._settings.jwt_algorithm)
 
-    def decode_token(self, token: str, expected_type: str = "access") -> TokenPayload:
-        """Decodes and validates a JWT token signature, expiration, and type."""
+    def decode_token(
+        self,
+        token: str,
+        expected_type: str = "access",
+        expected_scope: str | None = None,
+    ) -> TokenPayload:
+        """Decodes and validates a JWT token signature, expiration, type, and scope."""
         try:
             decoded = jwt.decode(
                 token,
@@ -101,6 +108,10 @@ class AuthService:
             token_type = decoded.get("type")
             if token_type != expected_type:
                 raise ValueError(f"Invalid token type: expected {expected_type}, got {token_type}")
+            token_scope = decoded.get("scope")
+            target_scope = expected_scope if expected_scope is not None else expected_type
+            if token_scope != target_scope:
+                raise ValueError(f"Invalid token scope: expected {target_scope}, got {token_scope}")
             return TokenPayload(**decoded)
         except jwt.PyJWTError as e:
             raise ValueError(f"Invalid token: {e}") from e

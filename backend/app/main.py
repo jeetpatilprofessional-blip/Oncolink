@@ -20,6 +20,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging(settings.log_level)
     logger.info("Starting ONCOLINK backend", extra={"project": settings.project_name})
 
+    # Guard: In production, demo local email relaxation must never be enabled
+    if settings.environment.lower() == "production" and settings.allow_demo_local_emails:
+        raise RuntimeError(
+            "Production environment must not enable demo local email validation relaxation "
+            "(allow_demo_local_emails must be False when environment is production)."
+        )
+
     # Initialize MongoDB (will raise RuntimeError and refuse to start if unreachable)
     await init_db(settings)
 
@@ -36,6 +43,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     Enables custom configuration injection for testing and runtime deployment.
     """
     cfg = settings or get_settings()
+
+    if cfg.environment.lower() == "production" and cfg.allow_demo_local_emails:
+        raise RuntimeError(
+            "Production environment must not enable demo local email validation relaxation "
+            "(allow_demo_local_emails must be False when environment is production)."
+        )
 
     app = FastAPI(
         title="ONCOLINK API",

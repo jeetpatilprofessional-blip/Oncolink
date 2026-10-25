@@ -99,7 +99,7 @@ export const handlers = [
       code?: string;
       recovery_code?: string;
     };
-    if (body.temp_token === "temp-doctor-session-token") {
+    if (body.temp_token === "temp-doctor-session-token" || (body.temp_token && body.temp_token.includes("temp"))) {
       if (body.code === "123456" || body.recovery_code === "RECOV123") {
         return HttpResponse.json({
           access_token: "mock-doctor-access-jwt",

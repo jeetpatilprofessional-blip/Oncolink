@@ -37,7 +37,7 @@ const RootRedirect: React.FC = () => {
   }
 
   if ((user.role === "doctor" || user.role === "admin") && !user.totp_enrolled) {
-    return <Navigate to="/2fa/setup" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   switch (user.role) {

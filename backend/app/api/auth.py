@@ -297,7 +297,11 @@ async def login_2fa(
 
     # 1. Decode temp token
     try:
-        token_payload = auth_service.decode_token(payload.temp_token, expected_type="2fa_pending")
+        token_payload = auth_service.decode_token(
+            payload.temp_token,
+            expected_type="2fa_pending",
+            expected_scope="2fa_pending",
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -393,41 +397,37 @@ async def _get_user_for_enrollment(
 ) -> UserInDB:
     """
     Extracts the user attempting TOTP enrollment.
-    Accepts either an active Bearer token or a 2FA pending temp_token in header or query.
+    Strictly accepts ONLY a 2FA temporary token carrying scope '2fa_pending'.
+    Normal access tokens and expired/invalid tokens are rejected with 401 Unauthorized.
     """
     auth_header = request.headers.get("authorization", "")
     temp_header = request.headers.get("x-temp-token") or request.query_params.get("temp_token")
 
-    user_id: str | None = None
-
+    raw_token: str | None = None
     if temp_header:
-        try:
-            payload = auth_service.decode_token(temp_header, expected_type="2fa_pending")
-            user_id = payload.sub
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid 2FA setup session: {e}",
-            ) from e
+        raw_token = temp_header
     elif auth_header.startswith("Bearer "):
-        token = auth_header[7:].strip()
-        try:
-            # Could be access or 2fa_pending
-            try:
-                payload = auth_service.decode_token(token, expected_type="access")
-            except ValueError:
-                payload = auth_service.decode_token(token, expected_type="2fa_pending")
-            user_id = payload.sub
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid credentials: {e}",
-            ) from e
+        raw_token = auth_header[7:].strip()
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required for TOTP enrollment",
+            headers={"WWW-Authenticate": "Bearer"},
         )
+
+    try:
+        payload = auth_service.decode_token(
+            raw_token,
+            expected_type="2fa_pending",
+            expected_scope="2fa_pending",
+        )
+        user_id = payload.sub
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid or expired 2FA setup session: {e}",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from e
 
     try:
         user_doc = await db["users"].find_one({"_id": ObjectId(user_id)})

@@ -102,7 +102,9 @@ async def test_refresh_token_rotation_and_reuse_detection(
     family_id = token_rec["family_id"]
 
     # 2. Legitimate refresh: rotates token
-    refresh_res_1 = await async_client.post("/auth/refresh", cookies={"oncolink_refresh_token": initial_cookie})
+    refresh_res_1 = await async_client.post(
+        "/auth/refresh", headers={"Cookie": f"oncolink_refresh_token={initial_cookie}"}
+    )
     assert refresh_res_1.status_code == 200
     new_cookie_1 = refresh_res_1.cookies.get("oncolink_refresh_token")
     assert new_cookie_1 is not None
@@ -113,19 +115,23 @@ async def test_refresh_token_rotation_and_reuse_detection(
     assert old_rec["revoked"] is True
 
     # 3. Legitimate second refresh: rotates token again
-    refresh_res_2 = await async_client.post("/auth/refresh", cookies={"oncolink_refresh_token": new_cookie_1})
+    refresh_res_2 = await async_client.post(
+        "/auth/refresh", headers={"Cookie": f"oncolink_refresh_token={new_cookie_1}"}
+    )
     assert refresh_res_2.status_code == 200
     new_cookie_2 = refresh_res_2.cookies.get("oncolink_refresh_token")
     assert new_cookie_2 != new_cookie_1
 
     # 4. REUSE ATTACK: Attacker replays initial_cookie!
-    attack_res = await async_client.post("/auth/refresh", cookies={"oncolink_refresh_token": initial_cookie})
+    attack_res = await async_client.post(
+        "/auth/refresh", headers={"Cookie": f"oncolink_refresh_token={initial_cookie}"}
+    )
     assert attack_res.status_code == 401
     assert "reuse" in attack_res.json()["detail"].lower()
 
     # 5. Proof of family revocation: Even new_cookie_2 should now be revoked!
     legit_res_after_attack = await async_client.post(
-        "/auth/refresh", cookies={"oncolink_refresh_token": new_cookie_2}
+        "/auth/refresh", headers={"Cookie": f"oncolink_refresh_token={new_cookie_2}"}
     )
     assert legit_res_after_attack.status_code == 401
 

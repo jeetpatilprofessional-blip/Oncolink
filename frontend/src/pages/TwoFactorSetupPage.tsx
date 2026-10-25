@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import { setup2fa, verifySetup2fa } from "../api/client";
 import type { TwoFactorSetupResponse } from "../api/types";
@@ -26,6 +26,7 @@ export const TwoFactorSetupPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!tempToken) return;
     let mounted = true;
 
     setup2fa(tempToken)
@@ -118,6 +119,10 @@ export const TwoFactorSetupPage: React.FC = () => {
       navigate("/", { replace: true });
     }
   };
+
+  if (!tempToken) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-paper flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-ink">

@@ -4,6 +4,35 @@ const fs = require("fs");
 const path = require("path");
 const WebSocket = require("C:/OncoLink/frontend/node_modules/ws");
 
+// Load environment variables from .env if present
+const envPath = path.join(__dirname, "..", ".env");
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, "utf8");
+  for (const line of envContent.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx !== -1) {
+      const key = trimmed.slice(0, eqIdx).trim();
+      let val = trimmed.slice(eqIdx + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (!process.env[key]) {
+        process.env[key] = val;
+      }
+    }
+  }
+}
+
+function getRequiredEnv(key) {
+  const val = process.env[key];
+  if (!val) {
+    throw new Error(`Required environment variable ${key} is missing.`);
+  }
+  return val;
+}
+
 const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const PORT = 9222;
 const OUT_DIR = "C:\\OncoLink\\docs\\screenshots";
@@ -293,31 +322,47 @@ async function main() {
     await waitForReact(pageSession);
     await captureScreenAtBothSizes(pageSession, "forbidden");
 
-    // 2. Patient Screen: demo.patient@oncolink.local
+    // 2. Patient Screen
     console.log("\n--- Logging in as Patient ---");
     await pageSession.clearStorage();
-    await loginAs(pageSession, "demo.patient@oncolink.local", "Patient#Sec2026!P");
+    await loginAs(
+      pageSession,
+      getRequiredEnv("DEMO_PATIENT_EMAIL"),
+      getRequiredEnv("DEMO_PATIENT_PASSWORD")
+    );
     await waitForSelector(pageSession, "nav");
     await captureScreenAtBothSizes(pageSession, "patient-home");
 
-    // 3. Screener Screen: demo.screener@oncolink.local
+    // 3. Screener Screen
     console.log("\n--- Logging in as Screener ---");
     await pageSession.clearStorage();
-    await loginAs(pageSession, "demo.screener@oncolink.local", "Screener#Sec2026!S");
+    await loginAs(
+      pageSession,
+      getRequiredEnv("DEMO_SCREENER_EMAIL"),
+      getRequiredEnv("DEMO_SCREENER_PASSWORD")
+    );
     await waitForSelector(pageSession, "nav");
     await captureScreenAtBothSizes(pageSession, "screener-home");
 
-    // 4. Coordinator Screen: demo.coordinator@oncolink.local
+    // 4. Coordinator Screen
     console.log("\n--- Logging in as Hospital Coordinator ---");
     await pageSession.clearStorage();
-    await loginAs(pageSession, "demo.coordinator@oncolink.local", "Coord#Sec2026!C");
+    await loginAs(
+      pageSession,
+      getRequiredEnv("DEMO_HOSPITAL_COORDINATOR_EMAIL"),
+      getRequiredEnv("DEMO_HOSPITAL_COORDINATOR_PASSWORD")
+    );
     await waitForSelector(pageSession, "nav");
     await captureScreenAtBothSizes(pageSession, "coordinator-home");
 
-    // 5. 2FA Setup Screen & Doctor Home: demo.doctor@oncolink.local
+    // 5. 2FA Setup Screen & Doctor Home
     console.log("\n--- Logging in as Doctor (Unenrolled -> 2FA Setup) ---");
     await pageSession.clearStorage();
-    await loginAs(pageSession, "demo.doctor@oncolink.local", "Doctor#Sec2026!D");
+    await loginAs(
+      pageSession,
+      getRequiredEnv("DEMO_DOCTOR_EMAIL"),
+      getRequiredEnv("DEMO_DOCTOR_PASSWORD")
+    );
     await waitForSelector(pageSession, "svg"); // QR code svg
     console.log("Capturing real 2FA setup screen...");
     await captureScreenAtBothSizes(pageSession, "2fa-setup");
@@ -328,10 +373,14 @@ async function main() {
     console.log("Capturing Doctor Home...");
     await captureScreenAtBothSizes(pageSession, "doctor-home");
 
-    // 6. Admin Screen: demo.admin@oncolink.local
+    // 6. Admin Screen
     console.log("\n--- Logging in as Admin (Unenrolled -> 2FA Setup -> Admin Dashboard) ---");
     await pageSession.clearStorage();
-    await loginAs(pageSession, "demo.admin@oncolink.local", "Admin#Sec2026!A");
+    await loginAs(
+      pageSession,
+      getRequiredEnv("DEMO_ADMIN_EMAIL"),
+      getRequiredEnv("DEMO_ADMIN_PASSWORD")
+    );
     await waitForSelector(pageSession, "svg");
     console.log("Completing 2FA enrollment for Admin...");
     await complete2FaEnrollment(pageSession);

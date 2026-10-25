@@ -1,16 +1,12 @@
 from datetime import datetime
 
-import email_validator
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
 
-if "local" in email_validator.SPECIAL_USE_DOMAIN_NAMES:
-    email_validator.SPECIAL_USE_DOMAIN_NAMES = [
-        d for d in email_validator.SPECIAL_USE_DOMAIN_NAMES if d != "local"
-    ]
+from app.models.validators import OncoLinkEmail
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: OncoLinkEmail
     password: str
 
 
@@ -53,6 +49,7 @@ class TokenPayload(BaseModel):
     iat: int
     exp: int
     type: str = "access"
+    scope: str = "access"
 
 
 class RefreshTokenInDB(BaseModel):
