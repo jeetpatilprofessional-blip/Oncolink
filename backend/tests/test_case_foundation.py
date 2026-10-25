@@ -23,41 +23,10 @@ from app.services.case_service import CaseService
 from app.services.patient_service import PatientService
 from app.services.state_machine import ALLOWED_TRANSITIONS, is_transition_allowed, transition
 
-# --- Helper fixtures and setup ---
-
-async def create_user_and_token(
-    db,
-    settings: Settings,
-    auth_service: AuthService,
-    role: UserRole,
-    email: str,
-    verification_status: DoctorVerificationStatus = DoctorVerificationStatus.VERIFIED,
-    hospital_id: str | None = None,
-) -> tuple[dict[str, Any], str]:
-    now = datetime.now(UTC)
-    user_doc = {
-        "email": email,
-        "password_hash": auth_service.hash_password("Password#123!"),
-        "role": role.value,
-        "is_active": True,
-        "is_demo": False,
-        "created_at": now,
-        "failed_login_attempts": 0,
-        "locked_until": None,
-        "totp_enrolled": True,
-    }
-    if role == UserRole.DOCTOR:
-        user_doc["registration_number"] = f"REG-{email}"
-        user_doc["verification_status"] = verification_status.value
-        user_doc["verified_by"] = "test_admin"
-        user_doc["verified_at"] = now
-    if hospital_id:
-        user_doc["hospital_id"] = hospital_id
-
-    res = await db["users"].insert_one(user_doc)
-    user_doc["id"] = str(res.inserted_id)
-    token, _ = auth_service.create_access_token(user_id=user_doc["id"], role=role.value)
-    return user_doc, token
+# Precomputed valid argon2 hash to avoid redundant crypto hashing during fast fixture setup
+PRECOMPUTED_TEST_HASH = (
+    "$argon2id$v=19$m=65536,t=3,p=4$qN72ZkE9bZPvD3x0c+rUeQ$X5wWzJ9QvP7lM4jK8hF3tY6aB2cE1dG9uI0oR8sT4vU"
+)
 
 
 # ==============================================================================
@@ -88,7 +57,6 @@ def test_case_reference_format_uniqueness_and_non_sequential():
 async def test_under_18_rejected_at_patient_registration(async_client: AsyncClient):
     """Patient self-registration must reject applicants under 18 years of age."""
     today = date.today()
-    # 17 years old
     under_18_dob = (today - timedelta(days=17 * 365 + 3)).isoformat()
 
     res = await async_client.post(
@@ -116,7 +84,20 @@ async def test_under_18_rejected_at_screener_patient_creation(
     audit_svc = AuditService(db)
     auth_svc = AuthService(db, test_settings, audit_svc)
 
-    _, screener_token = await create_user_and_token(db, test_settings, auth_svc, UserRole.SCREENER, "screener_dob@example.com")
+    now = datetime.now(UTC)
+    user_doc = {
+        "email": "screener_dob@example.com",
+        "password_hash": PRECOMPUTED_TEST_HASH,
+        "role": UserRole.SCREENER.value,
+        "is_active": True,
+        "is_demo": False,
+        "created_at": now,
+        "failed_login_attempts": 0,
+        "locked_until": None,
+        "totp_enrolled": True,
+    }
+    insert_res = await db["users"].insert_one(user_doc)
+    screener_token, _ = auth_svc.create_access_token(user_id=str(insert_res.inserted_id), role=UserRole.SCREENER.value)
     headers = {"Authorization": f"Bearer {screener_token}"}
 
     today = date.today()
@@ -143,12 +124,26 @@ async def test_under_18_rejected_at_screener_patient_creation(
 
 
 # ==============================================================================
-# 3. State Machine Cross-Product Transition Tests
+# 3. Admin Role Zero Allowed Edges Invariant Test
 # ==============================================================================
-def test_state_machine_transition_table_cross_product():
+def test_admin_role_has_zero_allowed_edges():
+    """Asserts that the admin role has zero allowed state transitions in ALLOWED_TRANSITIONS."""
+    for (from_st, to_st), allowed_roles in ALLOWED_TRANSITIONS.items():
+        assert UserRole.ADMIN.value not in allowed_roles, (
+            f"Admin role unexpectedly allowed in transition {from_st} -> {to_st}"
+        )
+        assert "admin" not in allowed_roles, (
+            f"String 'admin' unexpectedly allowed in transition {from_st} -> {to_st}"
+        )
+
+
+# ==============================================================================
+# 4. Pure Function State Machine Cross-Product Test (3,174 Checks, No DB)
+# ==============================================================================
+def test_state_machine_pure_cross_product_transitions():
     """
-    Exhaustively tests all 23x23=529 state transitions across actor roles.
-    Asserts that exact table edges succeed and every other transition is strictly denied.
+    Exhaustively evaluates all 23x23=529 state pairs across all 6 roles (3,174 evaluations)
+    against the pure is_transition_allowed function in memory without any database I/O.
     """
     all_states = list(CaseStatus)
     roles = [
@@ -160,38 +155,146 @@ def test_state_machine_transition_table_cross_product():
         "system",
     ]
 
-    total_combinations = 0
+    total_evaluations = 0
     allowed_count = 0
 
     for from_st in all_states:
         for to_st in all_states:
             for role in roles:
-                total_combinations += 1
+                total_evaluations += 1
                 allowed = is_transition_allowed(from_st, to_st, role)
                 allowed_roles = ALLOWED_TRANSITIONS.get((from_st, to_st), set())
 
                 # Special conditional edge: outreach -> confirmed requires new appointment condition
                 if (from_st, to_st) == (CaseStatus.OUTREACH, CaseStatus.CONFIRMED):
+                    assert not is_transition_allowed(from_st, to_st, role)
+                    if role == UserRole.HOSPITAL_COORDINATOR.value:
+                        assert is_transition_allowed(from_st, to_st, role, {"new_appointment_exists": True})
                     continue
 
                 expected = role in allowed_roles
-
                 if allowed:
                     allowed_count += 1
-                    assert (
-                        expected
-                    ), f"Unexpectedly allowed transition: {from_st} -> {to_st} for role {role}"
+                    assert expected, f"Unexpectedly allowed transition: {from_st} -> {to_st} for role {role}"
                 else:
-                    assert (
-                        not expected
-                    ), f"Denied valid edge: {from_st} -> {to_st} for role {role}"
+                    assert not expected, f"Denied valid edge: {from_st} -> {to_st} for role {role}"
 
-    assert total_combinations == len(all_states) * len(all_states) * len(roles)
+    assert total_evaluations == len(all_states) * len(all_states) * len(roles)
     assert allowed_count > 0
 
 
 # ==============================================================================
-# 4. State-Dependent 409 for POST /cases/{id}/cancel
+# 5. Database-Backed Allowed Transitions Test (Every Allowed Edge)
+# ==============================================================================
+ALLOWED_EDGE_CASES = [
+    (CaseStatus.DRAFT, CaseStatus.SUBMITTED, UserRole.PATIENT.value, ReasonCode.SELF_SCREEN_SUBMIT.value, None),
+    (CaseStatus.SUBMITTED, CaseStatus.QUALITY_CHECK, "system", ReasonCode.PHOTO_QUALITY_PASSED.value, None),
+    (CaseStatus.SUBMITTED, CaseStatus.RED_FLAG, "system", ReasonCode.RED_FLAG_DETECTED.value, None),
+    (CaseStatus.QUALITY_CHECK, CaseStatus.NEEDS_RETAKE, "system", ReasonCode.PHOTO_QUALITY_FAILED.value, None),
+    (CaseStatus.QUALITY_CHECK, CaseStatus.QUEUED, "system", ReasonCode.PHOTO_QUALITY_PASSED.value, None),
+    (CaseStatus.NEEDS_RETAKE, CaseStatus.SUBMITTED, UserRole.SCREENER.value, ReasonCode.PHOTO_RETAKE_SUBMITTED.value, None),
+    (CaseStatus.QUEUED, CaseStatus.AI_ANALYZED, "system", ReasonCode.AI_INFERENCE_COMPLETED.value, None),
+    (CaseStatus.AI_ANALYZED, CaseStatus.UNDER_REVIEW, UserRole.DOCTOR.value, ReasonCode.DOCTOR_CLAIMED.value, None),
+    (CaseStatus.UNDER_REVIEW, CaseStatus.AI_ANALYZED, UserRole.DOCTOR.value, ReasonCode.DOCTOR_RELEASED.value, None),
+    (CaseStatus.UNDER_REVIEW, CaseStatus.NEEDS_RETAKE, UserRole.DOCTOR.value, ReasonCode.DOCTOR_REQUESTED_RETAKE.value, None),
+    (CaseStatus.UNDER_REVIEW, CaseStatus.UNCERTAIN_NEEDS_INPERSON, UserRole.DOCTOR.value, ReasonCode.UNCERTAIN_LESION.value, None),
+    (CaseStatus.UNDER_REVIEW, CaseStatus.SIGNED, UserRole.DOCTOR.value, ReasonCode.CLINICAL_SIGN_OFF.value, None),
+    (CaseStatus.SIGNED, CaseStatus.CLOSED_MONITOR, UserRole.DOCTOR.value, ReasonCode.BENIGN_MONITOR.value, None),
+    (CaseStatus.SIGNED, CaseStatus.REFERRED, UserRole.DOCTOR.value, ReasonCode.HOSPITAL_REFERRAL_ISSUED.value, None),
+    (CaseStatus.REFERRED, CaseStatus.REFERRAL_PENDING, "system", ReasonCode.REFERRAL_TRANSMITTED.value, None),
+    (CaseStatus.REFERRAL_PENDING, CaseStatus.CONFIRMED, UserRole.HOSPITAL_COORDINATOR.value, ReasonCode.HOSPITAL_ACCEPTED.value, None),
+    (CaseStatus.REFERRAL_PENDING, CaseStatus.DECLINED_BY_HOSPITAL, UserRole.HOSPITAL_COORDINATOR.value, ReasonCode.HOSPITAL_DECLINED.value, None),
+    (CaseStatus.DECLINED_BY_HOSPITAL, CaseStatus.REFERRED, UserRole.DOCTOR.value, ReasonCode.RE_REFERRAL_ISSUED.value, None),
+    (CaseStatus.CONFIRMED, CaseStatus.ATTENDED, UserRole.HOSPITAL_COORDINATOR.value, ReasonCode.PATIENT_ATTENDED.value, None),
+    (CaseStatus.CONFIRMED, CaseStatus.NO_SHOW, UserRole.HOSPITAL_COORDINATOR.value, ReasonCode.PATIENT_NO_SHOW.value, None),
+    (CaseStatus.NO_SHOW, CaseStatus.OUTREACH, UserRole.SCREENER.value, ReasonCode.OUTREACH_INITIATED.value, None),
+    (
+        CaseStatus.OUTREACH,
+        CaseStatus.CONFIRMED,
+        UserRole.HOSPITAL_COORDINATOR.value,
+        ReasonCode.OUTREACH_RESCHEDULED.value,
+        {"new_appointment_exists": True},
+    ),
+    (CaseStatus.OUTREACH, CaseStatus.LOST_TO_FOLLOWUP, UserRole.HOSPITAL_COORDINATOR.value, ReasonCode.LOST_TO_FOLLOWUP.value, None),
+    (CaseStatus.ATTENDED, CaseStatus.OUTCOME_RECORDED, UserRole.HOSPITAL_COORDINATOR.value, ReasonCode.BIOPSY_OUTCOME_RECORDED.value, None),
+    (CaseStatus.OUTCOME_RECORDED, CaseStatus.CLOSED, UserRole.HOSPITAL_COORDINATOR.value, ReasonCode.CASE_CLOSED.value, None),
+    # Pre-signing cancellations
+    (CaseStatus.DRAFT, CaseStatus.CANCELLED, UserRole.PATIENT.value, ReasonCode.PATIENT_CANCELLED.value, None),
+    (CaseStatus.SUBMITTED, CaseStatus.CANCELLED, UserRole.PATIENT.value, ReasonCode.PATIENT_CANCELLED.value, None),
+    (CaseStatus.QUALITY_CHECK, CaseStatus.CANCELLED, UserRole.PATIENT.value, ReasonCode.PATIENT_CANCELLED.value, None),
+    (CaseStatus.NEEDS_RETAKE, CaseStatus.CANCELLED, UserRole.PATIENT.value, ReasonCode.PATIENT_CANCELLED.value, None),
+    (CaseStatus.QUEUED, CaseStatus.CANCELLED, UserRole.PATIENT.value, ReasonCode.PATIENT_CANCELLED.value, None),
+    (CaseStatus.AI_ANALYZED, CaseStatus.CANCELLED, UserRole.PATIENT.value, ReasonCode.PATIENT_CANCELLED.value, None),
+    (CaseStatus.UNDER_REVIEW, CaseStatus.CANCELLED, UserRole.PATIENT.value, ReasonCode.PATIENT_CANCELLED.value, None),
+    (CaseStatus.UNCERTAIN_NEEDS_INPERSON, CaseStatus.CANCELLED, UserRole.PATIENT.value, ReasonCode.PATIENT_CANCELLED.value, None),
+    # Consent withdrawn edges
+    (CaseStatus.UNDER_REVIEW, CaseStatus.CONSENT_WITHDRAWN, UserRole.PATIENT.value, ReasonCode.CONSENT_WITHDRAWN.value, None),
+    (CaseStatus.SIGNED, CaseStatus.CONSENT_WITHDRAWN, UserRole.PATIENT.value, ReasonCode.CONSENT_WITHDRAWN.value, None),
+]
+
+
+@pytest.mark.parametrize(
+    "from_st, to_st, role, reason_code, extra",
+    ALLOWED_EDGE_CASES,
+    ids=[f"{c[0].value}->{c[1].value}({c[2]})" for c in ALLOWED_EDGE_CASES],
+)
+@pytest.mark.asyncio
+async def test_state_machine_allowed_edge_db(
+    from_st: CaseStatus,
+    to_st: CaseStatus,
+    role: str,
+    reason_code: str,
+    extra: dict[str, Any] | None,
+    test_mongo_client: AsyncIOMotorClient,
+    test_settings: Settings,
+):
+    """Proves that every allowed edge executes cleanly in the real database transaction."""
+    db = test_mongo_client[test_settings.mongo_db_name]
+    case_svc = CaseService(db)
+
+    # Create initial case
+    case = await case_svc.create_case_draft(patient_id="patient_123", created_by="user_123")
+    actor_id = "doc_123" if role == UserRole.DOCTOR.value else "user_123"
+    assigned_doc_id = (
+        "doc_123"
+        if (from_st in (CaseStatus.UNDER_REVIEW, CaseStatus.SIGNED, CaseStatus.DECLINED_BY_HOSPITAL) and role == UserRole.DOCTOR.value)
+        else None
+    )
+
+    # Set to initial from_st
+    await db["cases"].update_one(
+        {"_id": ObjectId(case.id)},
+        {"$set": {"status": from_st.value, "assigned_doctor_id": assigned_doc_id}},
+    )
+
+    actor = {
+        "id": actor_id,
+        "patient_id": "patient_123",
+        "role": role,
+        "is_verified": True,
+    }
+    res = await transition(
+        case_id=case.id,
+        to_state=to_st,
+        actor=actor,
+        reason_code=reason_code,
+        extra_conditions=extra,
+        db=db,
+    )
+    assert res["status"] == to_st.value
+
+    # Verify persisted in database
+    persisted = await db["cases"].find_one({"_id": ObjectId(case.id)})
+    assert persisted["status"] == to_st.value
+    assert persisted["version"] == 2
+    assert persisted["status_history"][-1]["to_status"] == to_st.value
+    if from_st == CaseStatus.UNDER_REVIEW and to_st == CaseStatus.AI_ANALYZED:
+        # Voluntary release unassigns doctor
+        assert persisted.get("assigned_doctor_id") is None
+
+
+# ==============================================================================
+# 6. State-Dependent 409 for POST /cases/{id}/cancel
 # ==============================================================================
 @pytest.mark.asyncio
 async def test_case_cancellation_pre_vs_post_signing_states(
@@ -200,9 +303,8 @@ async def test_case_cancellation_pre_vs_post_signing_states(
     test_settings: Settings,
 ):
     """
-    POST /cases/{id}/cancel is permitted in states prior to 'signed' (draft, submitted,
-    quality_check, needs_retake, queued, ai_analyzed, under_review, uncertain_needs_inperson)
-    and strictly returns 409 Conflict in signed or any downstream state.
+    POST /cases/{id}/cancel is permitted in states prior to 'signed' and returns
+    409 Conflict in signed or any subsequent state.
     """
     db = test_mongo_client[test_settings.mongo_db_name]
     audit_svc = AuditService(db)
@@ -210,20 +312,31 @@ async def test_case_cancellation_pre_vs_post_signing_states(
     patient_svc = PatientService(db)
     case_svc = CaseService(db)
 
-    # Setup patient owner
-    patient_user, patient_token = await create_user_and_token(
-        db, test_settings, auth_svc, UserRole.PATIENT, "cancel_patient@example.com"
-    )
-    p_profile = await patient_svc.create_patient(
-        created_by=patient_user["id"],
-        date_of_birth="1990-01-01",
-        user_id=patient_user["id"],
-    )
+    now = datetime.now(UTC)
+    patient_user_doc = {
+        "email": "cancel_patient@example.com",
+        "password_hash": PRECOMPUTED_TEST_HASH,
+        "role": UserRole.PATIENT.value,
+        "is_active": True,
+        "is_demo": False,
+        "created_at": now,
+        "failed_login_attempts": 0,
+        "locked_until": None,
+        "totp_enrolled": True,
+    }
+    res_u = await db["users"].insert_one(patient_user_doc)
+    patient_id = str(res_u.inserted_id)
+    token, _ = auth_svc.create_access_token(user_id=patient_id, role=UserRole.PATIENT.value)
 
-    headers = {"Authorization": f"Bearer {patient_token}"}
+    p_profile = await patient_svc.create_patient(
+        created_by=patient_id,
+        date_of_birth="1990-01-01",
+        user_id=patient_id,
+    )
+    headers = {"Authorization": f"Bearer {token}"}
 
     # 1. Pre-signing cancellation succeeds
-    pre_case = await case_svc.create_case_draft(patient_id=p_profile.id, created_by=patient_user["id"])
+    pre_case = await case_svc.create_case_draft(patient_id=p_profile.id, created_by=patient_id)
     cancel_res_1 = await async_client.post(f"/cases/{pre_case.id}/cancel", headers=headers)
     assert cancel_res_1.status_code == 200
     assert cancel_res_1.json()["status"] == CaseStatus.CANCELLED.value
@@ -241,8 +354,7 @@ async def test_case_cancellation_pre_vs_post_signing_states(
     ]
 
     for st in post_signing_states:
-        # Create case and force status in DB
-        case_doc = await case_svc.create_case_draft(patient_id=p_profile.id, created_by=patient_user["id"])
+        case_doc = await case_svc.create_case_draft(patient_id=p_profile.id, created_by=patient_id)
         await db["cases"].update_one({"_id": ObjectId(case_doc.id)}, {"$set": {"status": st.value}})
 
         conflict_res = await async_client.post(f"/cases/{case_doc.id}/cancel", headers=headers)
@@ -250,7 +362,7 @@ async def test_case_cancellation_pre_vs_post_signing_states(
 
 
 # ==============================================================================
-# 5. Rollback Test: Transactional Atomicity on Audit Failure
+# 7. Rollback Test: Transactional Atomicity on Audit Failure
 # ==============================================================================
 @pytest.mark.asyncio
 async def test_state_machine_rollback_on_audit_write_failure(
@@ -262,27 +374,21 @@ async def test_state_machine_rollback_on_audit_write_failure(
     MongoDB transaction must roll back, leaving case status, version, and history unchanged.
     """
     db = test_mongo_client[test_settings.mongo_db_name]
-    audit_svc = AuditService(db)
-    auth_svc = AuthService(db, test_settings, audit_svc)
     patient_svc = PatientService(db)
     case_svc = CaseService(db)
 
-    patient_user, _ = await create_user_and_token(
-        db, test_settings, auth_svc, UserRole.PATIENT, "rollback_patient@example.com"
-    )
     p_profile = await patient_svc.create_patient(
-        created_by=patient_user["id"],
+        created_by="user_patient_rollback",
         date_of_birth="1990-01-01",
-        user_id=patient_user["id"],
+        user_id="user_patient_rollback",
     )
 
-    case = await case_svc.create_case_draft(patient_id=p_profile.id, created_by=patient_user["id"])
+    case = await case_svc.create_case_draft(patient_id=p_profile.id, created_by="user_patient_rollback")
     initial_version = case.version
 
-    # Force failure during AuditService.insert
     with patch.object(AuditService, "insert", side_effect=RuntimeError("Forced audit failure")):
         with pytest.raises(RuntimeError, match="Forced audit failure"):
-            actor = {"id": patient_user["id"], "role": UserRole.PATIENT.value, "patient_id": p_profile.id}
+            actor = {"id": "user_patient_rollback", "role": UserRole.PATIENT.value, "patient_id": p_profile.id}
             await transition(
                 case_id=case.id,
                 to_state=CaseStatus.SUBMITTED,
@@ -299,7 +405,7 @@ async def test_state_machine_rollback_on_audit_write_failure(
 
 
 # ==============================================================================
-# 6. Concurrency: Two Simultaneous Transitions Yield One Success and One 409
+# 8. Concurrency Test: Two Simultaneous Transitions Yield One Winner and One 409
 # ==============================================================================
 @pytest.mark.asyncio
 async def test_concurrent_transitions_yield_one_winner_and_one_conflict(
@@ -308,25 +414,19 @@ async def test_concurrent_transitions_yield_one_winner_and_one_conflict(
 ):
     """
     Two concurrent transitions on the same case from the same version must yield
-    exactly one 200/success and one 409 Conflict.
+    exactly one success and one 409 Conflict.
     """
     db = test_mongo_client[test_settings.mongo_db_name]
-    audit_svc = AuditService(db)
-    auth_svc = AuthService(db, test_settings, audit_svc)
     patient_svc = PatientService(db)
     case_svc = CaseService(db)
 
-    patient_user, _ = await create_user_and_token(
-        db, test_settings, auth_svc, UserRole.PATIENT, "concurrency_patient@example.com"
-    )
     p_profile = await patient_svc.create_patient(
-        created_by=patient_user["id"],
+        created_by="user_concurrency",
         date_of_birth="1990-01-01",
-        user_id=patient_user["id"],
+        user_id="user_concurrency",
     )
-
-    case = await case_svc.create_case_draft(patient_id=p_profile.id, created_by=patient_user["id"])
-    actor = {"id": patient_user["id"], "role": UserRole.PATIENT.value, "patient_id": p_profile.id}
+    case = await case_svc.create_case_draft(patient_id=p_profile.id, created_by="user_concurrency")
+    actor = {"id": "user_concurrency", "role": UserRole.PATIENT.value, "patient_id": p_profile.id}
 
     async def do_transition(target_st, reason):
         try:
@@ -353,13 +453,12 @@ async def test_concurrent_transitions_yield_one_winner_and_one_conflict(
     assert len(failures) == 1, f"Expected exactly 1 failure, got {len(failures)}"
     assert failures[0].status_code == 409, f"Expected 409 Conflict, got {failures[0]}"
 
-    # Verify DB has version 2
     case_in_db = await db["cases"].find_one({"_id": ObjectId(case.id)})
     assert case_in_db["version"] == 2
 
 
 # ==============================================================================
-# 7. Reason Text Privacy Invariant
+# 9. Reason Text Privacy Invariant Test
 # ==============================================================================
 @pytest.mark.asyncio
 async def test_reason_text_never_written_to_audit_log(
@@ -371,24 +470,18 @@ async def test_reason_text_never_written_to_audit_log(
     persisted into the audit_log collection.
     """
     db = test_mongo_client[test_settings.mongo_db_name]
-    audit_svc = AuditService(db)
-    auth_svc = AuthService(db, test_settings, audit_svc)
     patient_svc = PatientService(db)
     case_svc = CaseService(db)
 
-    patient_user, _ = await create_user_and_token(
-        db, test_settings, auth_svc, UserRole.PATIENT, "privacy_patient@example.com"
-    )
     p_profile = await patient_svc.create_patient(
-        created_by=patient_user["id"],
+        created_by="user_privacy",
         date_of_birth="1990-01-01",
-        user_id=patient_user["id"],
+        user_id="user_privacy",
     )
-
-    case = await case_svc.create_case_draft(patient_id=p_profile.id, created_by=patient_user["id"])
+    case = await case_svc.create_case_draft(patient_id=p_profile.id, created_by="user_privacy")
     secret_text = "SECRET_PATIENT_REASON_TEXT_SENSITIVE_NOTE_12345"
 
-    actor = {"id": patient_user["id"], "role": UserRole.PATIENT.value, "patient_id": p_profile.id}
+    actor = {"id": "user_privacy", "role": UserRole.PATIENT.value, "patient_id": p_profile.id}
     await transition(
         case_id=case.id,
         to_state=CaseStatus.SUBMITTED,
@@ -410,7 +503,7 @@ async def test_reason_text_never_written_to_audit_log(
 
 
 # ==============================================================================
-# 8. Source Scan Invariant Test
+# 10. Source Scan Invariant Test
 # ==============================================================================
 def test_no_source_file_outside_state_machine_writes_case_status():
     """
@@ -431,23 +524,216 @@ def test_no_source_file_outside_state_machine_writes_case_status():
         content = py_file.read_text(encoding="utf-8")
         for pat in forbidden_patterns:
             match = pat.search(content)
-            assert (
-                not match
-            ), f"Forbidden case status write detected in {py_file}: {match.group(0)}"
+            assert not match, f"Forbidden case status write detected in {py_file}: {match.group(0)}"
 
 
 # ==============================================================================
-# 9. Table-Driven Authorization Matrix Tests (Across All Persona Columns)
+# 11. Granular Parametrized Authorization Matrix Tests Across All Built Endpoints
 # ==============================================================================
+
+MATRIX_SPECS = [
+    # 1. POST /patients (screener creates profile)
+    (
+        "POST_/patients",
+        "POST",
+        "/patients",
+        {"date_of_birth": "1990-01-01", "language": "en"},
+        {
+            "Unauth": 401,
+            "Patient_(Owner)": 403,
+            "Patient_(Other)": 403,
+            "Screener_(Creator)": 201,
+            "Screener_(Other)": 201,
+            "Doctor_(Assigned)": 403,
+            "Doctor_(Second_opinion)": 403,
+            "Doctor_(verified,_pool_case)": 403,
+            "Doctor_(Other)": 403,
+            "Doctor_(Unverified)": 403,
+            "Coord_(Own_Hosp)": 403,
+            "Coord_(Other_Hosp)": 403,
+            "Admin": 403,
+        },
+    ),
+    # 2. POST /cases (draft creation)
+    (
+        "POST_/cases",
+        "POST",
+        "/cases",
+        "DYNAMIC_CASE_PAYLOAD",
+        {
+            "Unauth": 401,
+            "Patient_(Owner)": 201,
+            "Patient_(Other)": 201,
+            "Screener_(Creator)": 201,
+            "Screener_(Other)": 404,
+            "Doctor_(Assigned)": 403,
+            "Doctor_(Second_opinion)": 403,
+            "Doctor_(verified,_pool_case)": 403,
+            "Doctor_(Other)": 403,
+            "Doctor_(Unverified)": 403,
+            "Coord_(Own_Hosp)": 403,
+            "Coord_(Other_Hosp)": 403,
+            "Admin": 403,
+        },
+    ),
+    # 3. GET /cases (list cases)
+    (
+        "GET_/cases",
+        "GET",
+        "/cases",
+        None,
+        {
+            "Unauth": 401,
+            "Patient_(Owner)": 200,
+            "Patient_(Other)": 200,
+            "Screener_(Creator)": 200,
+            "Screener_(Other)": 200,
+            "Doctor_(Assigned)": 403,
+            "Doctor_(Second_opinion)": 403,
+            "Doctor_(verified,_pool_case)": 403,
+            "Doctor_(Other)": 403,
+            "Doctor_(Unverified)": 403,
+            "Coord_(Own_Hosp)": 403,
+            "Coord_(Other_Hosp)": 403,
+            "Admin": 403,
+        },
+    ),
+    # 4. GET /cases/{id} on Assigned Case A
+    (
+        "GET_/cases/{id}_Assigned",
+        "GET",
+        "TARGET_CASE_A",
+        None,
+        {
+            "Unauth": 401,
+            "Patient_(Owner)": 200,
+            "Patient_(Other)": 404,
+            "Screener_(Creator)": 200,
+            "Screener_(Other)": 404,
+            "Doctor_(Assigned)": 200,
+            "Doctor_(Second_opinion)": 200,
+            "Doctor_(verified,_pool_case)": 404,
+            "Doctor_(Other)": 404,
+            "Doctor_(Unverified)": 403,
+            "Coord_(Own_Hosp)": 403,
+            "Coord_(Other_Hosp)": 403,
+            "Admin": 403,
+        },
+    ),
+    # 5. GET /cases/{id} on Pool Case B (ai_analyzed, unassigned)
+    (
+        "GET_/cases/{id}_Pool",
+        "GET",
+        "TARGET_CASE_B_POOL",
+        None,
+        {
+            "Unauth": 401,
+            "Doctor_(verified,_pool_case)": 200,
+            "Doctor_(Unverified)": 403,
+        },
+    ),
+    # 6. GET /cases/{id}/timeline (Assigned Case A)
+    (
+        "GET_/cases/{id}/timeline",
+        "GET",
+        "TARGET_CASE_A_TIMELINE",
+        None,
+        {
+            "Unauth": 401,
+            "Patient_(Owner)": 403,
+            "Patient_(Other)": 403,
+            "Screener_(Creator)": 403,
+            "Screener_(Other)": 403,
+            "Doctor_(Assigned)": 200,
+            "Doctor_(Second_opinion)": 200,
+            "Doctor_(verified,_pool_case)": 404,
+            "Doctor_(Other)": 404,
+            "Doctor_(Unverified)": 403,
+            "Coord_(Own_Hosp)": 403,
+            "Coord_(Other_Hosp)": 403,
+            "Admin": 403,
+        },
+    ),
+    # 7. POST /consent
+    (
+        "POST_/consent",
+        "POST",
+        "/consent",
+        "DYNAMIC_CONSENT_PAYLOAD",
+        {
+            "Unauth": 401,
+            "Patient_(Owner)": 201,
+            "Patient_(Other)": 404,
+            "Screener_(Creator)": 404,
+            "Screener_(Other)": 404,
+            "Doctor_(Assigned)": 403,
+            "Doctor_(Second_opinion)": 403,
+            "Doctor_(verified,_pool_case)": 403,
+            "Doctor_(Other)": 403,
+            "Doctor_(Unverified)": 403,
+            "Coord_(Own_Hosp)": 403,
+            "Coord_(Other_Hosp)": 403,
+            "Admin": 403,
+        },
+    ),
+    # 8. POST /auth/register
+    (
+        "POST_/auth/register",
+        "POST",
+        "/auth/register",
+        {
+            "email": "granular_reg_patient@example.com",
+            "password": "ValidPassword123!",
+            "date_of_birth": "1991-01-01",
+            "consent_version": "v1",
+            "consent_accepted": True,
+        },
+        {
+            "Unauth": 201,
+            "Patient_(Owner)": 403,
+            "Patient_(Other)": 403,
+            "Screener_(Creator)": 403,
+            "Screener_(Other)": 403,
+            "Doctor_(Assigned)": 403,
+            "Doctor_(Second_opinion)": 403,
+            "Doctor_(verified,_pool_case)": 403,
+            "Doctor_(Other)": 403,
+            "Doctor_(Unverified)": 403,
+            "Coord_(Own_Hosp)": 403,
+            "Coord_(Other_Hosp)": 403,
+            "Admin": 403,
+        },
+    ),
+]
+
+MATRIX_CELLS = []
+MATRIX_CELL_IDS = []
+for name, method, target_spec, payload_spec, persona_map in MATRIX_SPECS:
+    for persona, exp_status in persona_map.items():
+        test_id = f"{name}--{persona}--{exp_status}"
+        MATRIX_CELLS.append((name, method, target_spec, payload_spec, persona, exp_status))
+        MATRIX_CELL_IDS.append(test_id)
+
+
+@pytest.mark.parametrize(
+    "name, method, target_spec, payload_spec, persona, expected_status",
+    MATRIX_CELLS,
+    ids=MATRIX_CELL_IDS,
+)
 @pytest.mark.asyncio
-async def test_table_driven_authorization_matrix(
+async def test_authorization_matrix_cell(
+    name: str,
+    method: str,
+    target_spec: Any,
+    payload_spec: Any,
+    persona: str,
+    expected_status: int,
     async_client: AsyncClient,
     test_mongo_client: AsyncIOMotorClient,
     test_settings: Settings,
 ):
     """
-    Exhaustively tests the 8 endpoints built in this task across all persona columns
-    defined in docs/PERMISSIONS.md Section 6.
+    Granular parametrized authorization test verifying an individual (endpoint, persona) cell.
     """
     db = test_mongo_client[test_settings.mongo_db_name]
     audit_svc = AuditService(db)
@@ -455,268 +741,159 @@ async def test_table_driven_authorization_matrix(
     patient_svc = PatientService(db)
     case_svc = CaseService(db)
 
-    # 1. Provision Personas
-    # Patient Owner & Patient Other
-    p_owner_user, p_owner_token = await create_user_and_token(db, test_settings, auth_svc, UserRole.PATIENT, "p_owner@test.local")
-    p_owner_profile = await patient_svc.create_patient(created_by=p_owner_user["id"], date_of_birth="1985-05-15", user_id=p_owner_user["id"])
+    now = datetime.now(UTC)
 
-    p_other_user, p_other_token = await create_user_and_token(db, test_settings, auth_svc, UserRole.PATIENT, "p_other@test.local")
-    await patient_svc.create_patient(created_by=p_other_user["id"], date_of_birth="1992-08-20", user_id=p_other_user["id"])
+    # 1. Fast Batch Provisioning of Test Personas
+    user_docs = [
+        {"_id": ObjectId("660000000000000000000001"), "email": "p_owner@test.local", "role": UserRole.PATIENT.value},
+        {"_id": ObjectId("660000000000000000000002"), "email": "p_other@test.local", "role": UserRole.PATIENT.value},
+        {"_id": ObjectId("660000000000000000000003"), "email": "scr_creator@test.local", "role": UserRole.SCREENER.value},
+        {"_id": ObjectId("660000000000000000000004"), "email": "scr_other@test.local", "role": UserRole.SCREENER.value},
+        {
+            "_id": ObjectId("660000000000000000000005"),
+            "email": "doc_assigned@test.local",
+            "role": UserRole.DOCTOR.value,
+            "verification_status": DoctorVerificationStatus.VERIFIED.value,
+        },
+        {
+            "_id": ObjectId("660000000000000000000006"),
+            "email": "doc_second_op@test.local",
+            "role": UserRole.DOCTOR.value,
+            "verification_status": DoctorVerificationStatus.VERIFIED.value,
+        },
+        {
+            "_id": ObjectId("660000000000000000000007"),
+            "email": "doc_pool@test.local",
+            "role": UserRole.DOCTOR.value,
+            "verification_status": DoctorVerificationStatus.VERIFIED.value,
+        },
+        {
+            "_id": ObjectId("660000000000000000000008"),
+            "email": "doc_other@test.local",
+            "role": UserRole.DOCTOR.value,
+            "verification_status": DoctorVerificationStatus.VERIFIED.value,
+        },
+        {
+            "_id": ObjectId("660000000000000000000009"),
+            "email": "doc_unverified@test.local",
+            "role": UserRole.DOCTOR.value,
+            "verification_status": DoctorVerificationStatus.PENDING.value,
+        },
+        {
+            "_id": ObjectId("66000000000000000000000a"),
+            "email": "coord_own@test.local",
+            "role": UserRole.HOSPITAL_COORDINATOR.value,
+            "hospital_id": "HOSP_01",
+        },
+        {
+            "_id": ObjectId("66000000000000000000000b"),
+            "email": "coord_other@test.local",
+            "role": UserRole.HOSPITAL_COORDINATOR.value,
+            "hospital_id": "HOSP_02",
+        },
+        {"_id": ObjectId("66000000000000000000000c"), "email": "admin@test.local", "role": UserRole.ADMIN.value},
+    ]
 
-    # Screener Creator & Screener Other
-    scr_creator_user, scr_creator_token = await create_user_and_token(db, test_settings, auth_svc, UserRole.SCREENER, "scr_creator@test.local")
-    scr_other_user, scr_other_token = await create_user_and_token(db, test_settings, auth_svc, UserRole.SCREENER, "scr_other@test.local")
-    # Patient profile created by screener creator
-    scr_created_profile = await patient_svc.create_patient(created_by=scr_creator_user["id"], date_of_birth="1988-03-12")
+    for u in user_docs:
+        u.setdefault("password_hash", PRECOMPUTED_TEST_HASH)
+        u.setdefault("is_active", True)
+        u.setdefault("is_demo", False)
+        u.setdefault("created_at", now)
+        u.setdefault("failed_login_attempts", 0)
+        u.setdefault("locked_until", None)
+        u.setdefault("totp_enrolled", True)
 
-    # Doctors
-    doc_assigned_user, doc_assigned_token = await create_user_and_token(db, test_settings, auth_svc, UserRole.DOCTOR, "doc_assigned@test.local")
-    doc_second_op_user, doc_second_op_token = await create_user_and_token(db, test_settings, auth_svc, UserRole.DOCTOR, "doc_second_op@test.local")
-    doc_pool_user, doc_pool_token = await create_user_and_token(db, test_settings, auth_svc, UserRole.DOCTOR, "doc_pool@test.local")
-    doc_other_user, doc_other_token = await create_user_and_token(db, test_settings, auth_svc, UserRole.DOCTOR, "doc_other@test.local")
-    doc_unverified_user, doc_unverified_token = await create_user_and_token(
-        db, test_settings, auth_svc, UserRole.DOCTOR, "doc_unverified@test.local", verification_status=DoctorVerificationStatus.PENDING
+    await db["users"].insert_many(user_docs)
+
+    # 2. Fast Token Generation
+    tokens = {
+        "Unauth": None,
+        "Patient_(Owner)": auth_svc.create_access_token(user_id="660000000000000000000001", role=UserRole.PATIENT.value)[0],
+        "Patient_(Other)": auth_svc.create_access_token(user_id="660000000000000000000002", role=UserRole.PATIENT.value)[0],
+        "Screener_(Creator)": auth_svc.create_access_token(user_id="660000000000000000000003", role=UserRole.SCREENER.value)[0],
+        "Screener_(Other)": auth_svc.create_access_token(user_id="660000000000000000000004", role=UserRole.SCREENER.value)[0],
+        "Doctor_(Assigned)": auth_svc.create_access_token(user_id="660000000000000000000005", role=UserRole.DOCTOR.value)[0],
+        "Doctor_(Second_opinion)": auth_svc.create_access_token(user_id="660000000000000000000006", role=UserRole.DOCTOR.value)[0],
+        "Doctor_(verified,_pool_case)": auth_svc.create_access_token(user_id="660000000000000000000007", role=UserRole.DOCTOR.value)[0],
+        "Doctor_(Other)": auth_svc.create_access_token(user_id="660000000000000000000008", role=UserRole.DOCTOR.value)[0],
+        "Doctor_(Unverified)": auth_svc.create_access_token(user_id="660000000000000000000009", role=UserRole.DOCTOR.value)[0],
+        "Coord_(Own_Hosp)": auth_svc.create_access_token(user_id="66000000000000000000000a", role=UserRole.HOSPITAL_COORDINATOR.value)[0],
+        "Coord_(Other_Hosp)": auth_svc.create_access_token(user_id="66000000000000000000000b", role=UserRole.HOSPITAL_COORDINATOR.value)[0],
+        "Admin": auth_svc.create_access_token(user_id="66000000000000000000000c", role=UserRole.ADMIN.value)[0],
+    }
+
+    # 3. Patient Profiles
+    p_owner_profile = await patient_svc.create_patient(
+        created_by="660000000000000000000001", date_of_birth="1985-05-15", user_id="660000000000000000000001"
+    )
+    await patient_svc.create_patient(
+        created_by="660000000000000000000002", date_of_birth="1992-08-20", user_id="660000000000000000000002"
+    )
+    scr_created_profile = await patient_svc.create_patient(
+        created_by="660000000000000000000003", date_of_birth="1988-03-12"
     )
 
-    # Coordinators & Admin
-    coord_own_user, coord_own_token = await create_user_and_token(
-        db, test_settings, auth_svc, UserRole.HOSPITAL_COORDINATOR, "coord_own@test.local", hospital_id="HOSP_01"
-    )
-    coord_other_user, coord_other_token = await create_user_and_token(
-        db, test_settings, auth_svc, UserRole.HOSPITAL_COORDINATOR, "coord_other@test.local", hospital_id="HOSP_02"
-    )
-    admin_user, admin_token = await create_user_and_token(db, test_settings, auth_svc, UserRole.ADMIN, "admin@test.local")
-
-    # 2. Provision Target Cases
-    # Case A: Assigned case (under_review, owned by p_owner, created by scr_creator, assigned to doc_assigned, 2nd op doc_second_op)
-    case_a = await case_svc.create_case_draft(patient_id=p_owner_profile.id, created_by=scr_creator_user["id"])
+    # 4. Target Cases
+    # Case A: Assigned case in under_review
+    case_a = await case_svc.create_case_draft(patient_id=p_owner_profile.id, created_by="660000000000000000000003")
     await db["cases"].update_one(
         {"_id": ObjectId(case_a.id)},
         {
             "$set": {
                 "status": CaseStatus.UNDER_REVIEW.value,
-                "assigned_doctor_id": doc_assigned_user["id"],
-                "second_opinion_doctor_id": doc_second_op_user["id"],
+                "assigned_doctor_id": "660000000000000000000005",
+                "second_opinion_doctor_id": "660000000000000000000006",
             }
         },
     )
 
-    # Case B: Pool Case (queued, unassigned, owned by p_owner)
-    case_b_pool = await case_svc.create_case_draft(patient_id=p_owner_profile.id, created_by=p_owner_user["id"])
-    await db["cases"].update_one({"_id": ObjectId(case_b_pool.id)}, {"$set": {"status": CaseStatus.QUEUED.value}})
+    # Case B: Pool Case (ai_analyzed, unassigned)
+    case_b_pool = await case_svc.create_case_draft(patient_id=p_owner_profile.id, created_by="660000000000000000000001")
+    await db["cases"].update_one(
+        {"_id": ObjectId(case_b_pool.id)},
+        {
+            "$set": {
+                "status": CaseStatus.AI_ANALYZED.value,
+                "assigned_doctor_id": None,
+            }
+        },
+    )
 
-    # Headers dictionary
-    auth_headers = {
-        "Unauth": {},
-        "Patient (Owner)": {"Authorization": f"Bearer {p_owner_token}"},
-        "Patient (Other)": {"Authorization": f"Bearer {p_other_token}"},
-        "Screener (Creator)": {"Authorization": f"Bearer {scr_creator_token}"},
-        "Screener (Other)": {"Authorization": f"Bearer {scr_other_token}"},
-        "Doctor (Assigned)": {"Authorization": f"Bearer {doc_assigned_token}"},
-        "Doctor (Second opinion)": {"Authorization": f"Bearer {doc_second_op_token}"},
-        "Doctor (verified, pool case)": {"Authorization": f"Bearer {doc_pool_token}"},
-        "Doctor (Other)": {"Authorization": f"Bearer {doc_other_token}"},
-        "Doctor (Unverified)": {"Authorization": f"Bearer {doc_unverified_token}"},
-        "Coord (Own Hosp)": {"Authorization": f"Bearer {coord_own_token}"},
-        "Coord (Other Hosp)": {"Authorization": f"Bearer {coord_other_token}"},
-        "Admin": {"Authorization": f"Bearer {admin_token}"},
-    }
+    # 5. Resolve target URL and payload
+    if target_spec == "TARGET_CASE_A":
+        url = f"/cases/{case_a.id}"
+    elif target_spec == "TARGET_CASE_A_TIMELINE":
+        url = f"/cases/{case_a.id}/timeline"
+    elif target_spec == "TARGET_CASE_B_POOL":
+        url = f"/cases/{case_b_pool.id}"
+    else:
+        url = target_spec
 
-    # Test matrix for the 8 endpoints
-    matrix_specs = [
-        # 1. POST /patients (screener creates profile)
-        {
-            "name": "POST /patients",
-            "method": "POST",
-            "url": "/patients",
-            "payload": {"date_of_birth": "1990-01-01", "language": "en"},
-            "expected": {
-                "Unauth": 401,
-                "Patient (Owner)": 403,
-                "Patient (Other)": 403,
-                "Screener (Creator)": 201,
-                "Screener (Other)": 201,
-                "Doctor (Assigned)": 403,
-                "Doctor (Second opinion)": 403,
-                "Doctor (verified, pool case)": 403,
-                "Doctor (Other)": 403,
-                "Doctor (Unverified)": 403,
-                "Coord (Own Hosp)": 403,
-                "Coord (Other Hosp)": 403,
-                "Admin": 403,
-            },
-        },
-        # 2. POST /cases (draft creation)
-        {
-            "name": "POST /cases",
-            "method": "POST",
-            "url": "/cases",
-            "payload": {"patient_id": scr_created_profile.id},
-            "expected": {
-                "Unauth": 401,
-                "Patient (Owner)": 201,  # Resolves own profile
-                "Patient (Other)": 201,  # Resolves own profile
-                "Screener (Creator)": 201,  # Target patient created by scr_creator
-                "Screener (Other)": 404,  # Anti-probing: patient created by other screener -> 404
-                "Doctor (Assigned)": 403,
-                "Doctor (Second opinion)": 403,
-                "Doctor (verified, pool case)": 403,
-                "Doctor (Other)": 403,
-                "Doctor (Unverified)": 403,
-                "Coord (Own Hosp)": 403,
-                "Coord (Other Hosp)": 403,
-                "Admin": 403,
-            },
-        },
-        # 3. GET /cases (list cases)
-        {
-            "name": "GET /cases",
-            "method": "GET",
-            "url": "/cases",
-            "payload": None,
-            "expected": {
-                "Unauth": 401,
-                "Patient (Owner)": 200,
-                "Patient (Other)": 200,
-                "Screener (Creator)": 200,
-                "Screener (Other)": 200,
-                "Doctor (Assigned)": 403,
-                "Doctor (Second opinion)": 403,
-                "Doctor (verified, pool case)": 403,
-                "Doctor (Other)": 403,
-                "Doctor (Unverified)": 403,
-                "Coord (Own Hosp)": 403,
-                "Coord (Other Hosp)": 403,
-                "Admin": 403,
-            },
-        },
-        # 4. GET /cases/{id} on Assigned Case A
-        {
-            "name": "GET /cases/{id} (Assigned Case A)",
-            "method": "GET",
-            "url": f"/cases/{case_a.id}",
-            "payload": None,
-            "expected": {
-                "Unauth": 401,
-                "Patient (Owner)": 200,  # Status only
-                "Patient (Other)": 404,  # Anti-probing
-                "Screener (Creator)": 200,  # Status only
-                "Screener (Other)": 404,  # Anti-probing
-                "Doctor (Assigned)": 200,  # Full view
-                "Doctor (Second opinion)": 200,  # Full view
-                "Doctor (verified, pool case)": 404,  # Not in pool (under_review)
-                "Doctor (Other)": 404,  # Not assigned
-                "Doctor (Unverified)": 403,  # Uniform 403
-                "Coord (Own Hosp)": 403,
-                "Coord (Other Hosp)": 403,
-                "Admin": 403,
-            },
-        },
-        # 5. GET /cases/{id} on Pool Case B (queued)
-        {
-            "name": "GET /cases/{id} (Pool Case B)",
-            "method": "GET",
-            "url": f"/cases/{case_b_pool.id}",
-            "payload": None,
-            "expected": {
-                "Unauth": 401,
-                "Doctor (verified, pool case)": 200,  # Metadata view
-                "Doctor (Unverified)": 403,  # Uniform 403
-            },
-        },
-        # 6. GET /cases/{id}/timeline (Assigned Case A)
-        {
-            "name": "GET /cases/{id}/timeline",
-            "method": "GET",
-            "url": f"/cases/{case_a.id}/timeline",
-            "payload": None,
-            "expected": {
-                "Unauth": 401,
-                "Patient (Owner)": 403,
-                "Patient (Other)": 403,
-                "Screener (Creator)": 403,
-                "Screener (Other)": 403,
-                "Doctor (Assigned)": 200,
-                "Doctor (Second opinion)": 200,
-                "Doctor (verified, pool case)": 404,
-                "Doctor (Other)": 404,
-                "Doctor (Unverified)": 403,
-                "Coord (Own Hosp)": 403,
-                "Coord (Other Hosp)": 403,
-                "Admin": 403,
-            },
-        },
-        # 7. POST /consent
-        {
-            "name": "POST /consent",
-            "method": "POST",
-            "url": "/consent",
-            "payload": {
-                "patient_id": p_owner_profile.id,
-                "consent_version": "v1",
-                "consent_accepted": True,
-            },
-            "expected": {
-                "Unauth": 401,
-                "Patient (Owner)": 201,
-                "Patient (Other)": 404,
-                "Screener (Creator)": 404,  # Patient was self-created by p_owner, not screener -> 404
-                "Screener (Other)": 404,
-                "Doctor (Assigned)": 403,
-                "Doctor (Second opinion)": 403,
-                "Doctor (verified, pool case)": 403,
-                "Doctor (Other)": 403,
-                "Doctor (Unverified)": 403,
-                "Coord (Own Hosp)": 403,
-                "Coord (Other Hosp)": 403,
-                "Admin": 403,
-            },
-        },
-        # 8. POST /auth/register
-        {
-            "name": "POST /auth/register",
-            "method": "POST",
-            "url": "/auth/register",
-            "payload": {
-                "email": "new_unauth_patient@example.com",
-                "password": "ValidPassword123!",
-                "date_of_birth": "1991-01-01",
-                "consent_version": "v1",
-                "consent_accepted": True,
-            },
-            "expected": {
-                "Unauth": 201,
-                "Patient (Owner)": 403,
-                "Patient (Other)": 403,
-                "Screener (Creator)": 403,
-                "Screener (Other)": 403,
-                "Doctor (Assigned)": 403,
-                "Doctor (Second opinion)": 403,
-                "Doctor (verified, pool case)": 403,
-                "Doctor (Other)": 403,
-                "Doctor (Unverified)": 403,
-                "Coord (Own Hosp)": 403,
-                "Coord (Other Hosp)": 403,
-                "Admin": 403,
-            },
-        },
-    ]
+    if payload_spec == "DYNAMIC_CASE_PAYLOAD":
+        payload = {"patient_id": scr_created_profile.id}
+    elif payload_spec == "DYNAMIC_CONSENT_PAYLOAD":
+        payload = {
+            "patient_id": p_owner_profile.id,
+            "consent_version": "v1",
+            "consent_accepted": True,
+        }
+    else:
+        payload = payload_spec
 
-    for spec in matrix_specs:
-        for persona, expected_status in spec["expected"].items():
-            headers = auth_headers[persona]
-            method = spec["method"]
-            url = spec["url"]
-            payload = spec["payload"]
+    # 6. Execute Request
+    headers = {}
+    tok = tokens.get(persona)
+    if tok:
+        headers["Authorization"] = f"Bearer {tok}"
 
-            if method == "GET":
-                res = await async_client.get(url, headers=headers)
-            elif method == "POST":
-                res = await async_client.post(url, headers=headers, json=payload)
-            else:
-                raise ValueError(f"Unsupported method {method}")
+    if method == "GET":
+        res = await async_client.get(url, headers=headers)
+    elif method == "POST":
+        res = await async_client.post(url, headers=headers, json=payload)
+    else:
+        raise ValueError(f"Unsupported method: {method}")
 
-            assert res.status_code == expected_status, (
-                f"[{spec['name']}] Failed for persona '{persona}': "
-                f"expected {expected_status}, got {res.status_code} ({res.text})"
-            )
+    assert res.status_code == expected_status, (
+        f"Cell [{name} | {persona}] failed: expected {expected_status}, "
+        f"got {res.status_code} ({res.text})"
+    )

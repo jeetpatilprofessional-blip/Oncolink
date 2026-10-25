@@ -30,8 +30,8 @@ ALLOWED_TRANSITIONS: dict[tuple[CaseStatus, CaseStatus], set[str]] = {
     (CaseStatus.QUEUED, CaseStatus.AI_ANALYZED): {"system"},
     # 8. ai_analyzed -> under_review (Doctor, System)
     (CaseStatus.AI_ANALYZED, CaseStatus.UNDER_REVIEW): {UserRole.DOCTOR.value, "system"},
-    # 9. under_review -> queued (Doctor)
-    (CaseStatus.UNDER_REVIEW, CaseStatus.QUEUED): {UserRole.DOCTOR.value},
+    # 9. under_review -> ai_analyzed (Doctor voluntary release; retains AI result)
+    (CaseStatus.UNDER_REVIEW, CaseStatus.AI_ANALYZED): {UserRole.DOCTOR.value},
     # 10. under_review -> needs_retake (Doctor)
     (CaseStatus.UNDER_REVIEW, CaseStatus.NEEDS_RETAKE): {UserRole.DOCTOR.value},
     # 11. under_review -> uncertain_needs_inperson (Doctor)
@@ -83,11 +83,11 @@ for _s in CANCELLABLE_STATES:
         UserRole.SCREENER.value,
     }
 
-# 27. consent_withdrawn: Reachable from ANY state via patient right to be forgotten or admin erasure
+# 27. consent_withdrawn: Reachable from ANY state via patient right to be forgotten or automated data erasure
 for _s in CaseStatus:
     ALLOWED_TRANSITIONS[(_s, CaseStatus.CONSENT_WITHDRAWN)] = {
         UserRole.PATIENT.value,
-        UserRole.ADMIN.value,
+        "system",
     }
 
 
@@ -248,8 +248,8 @@ async def transition(
             set_payload["assigned_doctor_id"] = assigned_doctor_id
         elif target_state == CaseStatus.UNDER_REVIEW and from_state == CaseStatus.AI_ANALYZED and actor_role == UserRole.DOCTOR.value:
             set_payload["assigned_doctor_id"] = actor_id
-        elif target_state == CaseStatus.QUEUED and from_state == CaseStatus.UNDER_REVIEW:
-            # Release unassigns the doctor
+        elif target_state == CaseStatus.AI_ANALYZED and from_state == CaseStatus.UNDER_REVIEW:
+            # Voluntary release unassigns the doctor while keeping AI result
             set_payload["assigned_doctor_id"] = None
 
         # 6. Execute atomic update with optimistic version filter

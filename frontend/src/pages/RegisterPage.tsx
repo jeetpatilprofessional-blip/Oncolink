@@ -14,12 +14,29 @@ export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [dobError, setDobError] = useState<string | null>(null);
   const [consent, setConsent] = useState<ConsentCurrentResponse | null>(null);
   const [consentAgreed, setConsentAgreed] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingConsent, setLoadingConsent] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const calculateAge = (dobString: string): number => {
+    if (!dobString) return 0;
+    const parts = dobString.split("-").map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return 0;
+    const [year, month, day] = parts as [number, number, number];
+    const birthDate = new Date(year, month - 1, day);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -42,9 +59,15 @@ export const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setDobError(null);
 
-    if (!email.trim() || !password || !confirmPassword) {
+    if (!email.trim() || !password || !confirmPassword || !dateOfBirth) {
       setErrorMsg(t("errors.field_required"));
+      return;
+    }
+
+    if (calculateAge(dateOfBirth) < 18) {
+      setDobError(t("errors.under_18"));
       return;
     }
 
@@ -73,8 +96,8 @@ export const RegisterPage: React.FC = () => {
       await registerPatient(
         email.trim(),
         password,
-        consent.version,
-        new Date().toISOString()
+        dateOfBirth,
+        consent.version
       );
       // Automatically log the newly registered patient in
       await login(email.trim(), password);
@@ -89,6 +112,7 @@ export const RegisterPage: React.FC = () => {
   const isFormValid =
     consentAgreed &&
     email.trim().length > 0 &&
+    dateOfBirth.length > 0 &&
     password.length >= 10 &&
     password === confirmPassword &&
     !loadingConsent;
@@ -124,6 +148,23 @@ export const RegisterPage: React.FC = () => {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <Field
+              id="register-dob"
+              label={t("auth.date_of_birth_label")}
+              type="date"
+              required
+              value={dateOfBirth}
+              error={dobError || undefined}
+              onChange={(e) => {
+                setDateOfBirth(e.target.value);
+                if (dobError) {
+                  if (calculateAge(e.target.value) >= 18) {
+                    setDobError(null);
+                  }
+                }
+              }}
             />
 
             <Field

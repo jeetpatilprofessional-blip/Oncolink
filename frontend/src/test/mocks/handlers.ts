@@ -154,7 +154,13 @@ export const handlers = [
 
   // Auth: Register
   http.post("http://127.0.0.1:8000/auth/register", async ({ request }) => {
-    const body = (await request.json()) as { email: string };
+    const body = (await request.json()) as {
+      email: string;
+      password?: string;
+      date_of_birth?: string;
+      consent_version?: string;
+      consent_accepted?: boolean;
+    };
     if (body.email === "existing@hospital.org") {
       return HttpResponse.json(
         { detail: "An account with this email already exists" },
@@ -162,8 +168,11 @@ export const handlers = [
       );
     }
     return HttpResponse.json({
-      message: "Patient registered successfully",
+      access_token: "mock-new-patient-access-jwt",
+      token_type: "bearer",
       user_id: "new-patient-999",
+      message: "Patient registered successfully",
+      date_of_birth: body.date_of_birth,
     });
   }),
 

@@ -124,6 +124,9 @@ describe("Authentication Flows & Token Security", () => {
     fireEvent.change(screen.getByLabelText(/Email address/i), {
       target: { value: "newpatient@example.org" },
     });
+    fireEvent.change(screen.getByLabelText(/Date of birth/i), {
+      target: { value: "1990-01-01" },
+    });
     fireEvent.change(screen.getByLabelText(/^Password/i), {
       target: { value: "SecurePassword123!" },
     });
@@ -144,6 +147,113 @@ describe("Authentication Flows & Token Security", () => {
     fireEvent.click(consentCheckbox);
     expect(consentCheckbox).not.toBeChecked();
     expect(submitBtn).toBeDisabled();
+  });
+
+  it("rejects an under-18 date with plain message without calling the API", async () => {
+    let apiCalled = false;
+    server.use(
+      http.post("http://127.0.0.1:8000/auth/register", () => {
+        apiCalled = true;
+        return HttpResponse.json({ user_id: "patient-123" });
+      })
+    );
+
+    render(
+      <AuthProvider>
+        <BrowserRouter>
+          <RegisterPage />
+        </BrowserRouter>
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Informed Consent for Research and Triage/i)).toBeInTheDocument();
+    });
+
+    // Enter under-18 date of birth (e.g., born 16 years ago)
+    const today = new Date();
+    const minorYear = today.getFullYear() - 16;
+    const minorDob = `${minorYear}-05-15`;
+
+    fireEvent.change(screen.getByLabelText(/Email address/i), {
+      target: { value: "minor@example.org" },
+    });
+    fireEvent.change(screen.getByLabelText(/Date of birth/i), {
+      target: { value: minorDob },
+    });
+    fireEvent.change(screen.getByLabelText(/^Password/i), {
+      target: { value: "SecurePassword123!" },
+    });
+    fireEvent.change(screen.getByLabelText(/Confirm password/i), {
+      target: { value: "SecurePassword123!" },
+    });
+    fireEvent.click(
+      screen.getByLabelText(/I have read and agree to the research consent terms above/i)
+    );
+
+    const submitBtn = screen.getByRole("button", { name: /Create patient account/i });
+    expect(submitBtn).not.toBeDisabled();
+    fireEvent.click(submitBtn);
+
+    // Verify error message is displayed
+    await waitFor(() => {
+      expect(screen.getByText("You must be 18 or older to register.")).toBeInTheDocument();
+    });
+
+    // API must NEVER have been called
+    expect(apiCalled).toBe(false);
+  });
+
+  it("includes date_of_birth in the registration request when valid", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post("http://127.0.0.1:8000/auth/register", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          user_id: "registered-patient-123",
+          message: "Patient registered successfully",
+        });
+      })
+    );
+
+    render(
+      <AuthProvider>
+        <BrowserRouter>
+          <RegisterPage />
+        </BrowserRouter>
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Informed Consent for Research and Triage/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Email address/i), {
+      target: { value: "adult@example.org" },
+    });
+    fireEvent.change(screen.getByLabelText(/Date of birth/i), {
+      target: { value: "1990-01-01" },
+    });
+    fireEvent.change(screen.getByLabelText(/^Password/i), {
+      target: { value: "SecurePassword123!" },
+    });
+    fireEvent.change(screen.getByLabelText(/Confirm password/i), {
+      target: { value: "SecurePassword123!" },
+    });
+    fireEvent.click(
+      screen.getByLabelText(/I have read and agree to the research consent terms above/i)
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Create patient account/i }));
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull();
+    });
+
+    const body = capturedBody as unknown as Record<string, unknown>;
+    expect(body.email).toBe("adult@example.org");
+    expect(body.date_of_birth).toBe("1990-01-01");
+    expect(body.consent_accepted).toBe(true);
   });
 
   it("strictly enforces token security: tokens never exist in localStorage or sessionStorage", () => {

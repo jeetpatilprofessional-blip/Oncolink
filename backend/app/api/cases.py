@@ -224,8 +224,8 @@ async def get_case(
             updated_at=case["updated_at"],
         )
 
-    # Verified Doctor viewing Unassigned Pool Case: Metadata only (queued or ai_analyzed)
-    if assigned_doc_id is None and case_status in (CaseStatus.QUEUED, CaseStatus.AI_ANALYZED):
+    # Verified Doctor viewing Unassigned Pool Case: Metadata only (ai_analyzed with no assigned clinician)
+    if assigned_doc_id is None and case_status == CaseStatus.AI_ANALYZED:
         # Look up patient profile to compute age band
         patient_doc = await patient_service.get_patient_by_id(case["patient_id"])
         age_band = compute_age_band(patient_doc.get("date_of_birth") if patient_doc else None)

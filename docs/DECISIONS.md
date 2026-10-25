@@ -93,3 +93,7 @@ This document records authoritative technical and architectural decisions for th
      - Assigned and second-opinion doctors receive full clinical details (`CaseDetailResponse`).
      - Administrators and hospital coordinators receive `403 Forbidden` (clinical isolation boundary).
      - Wrong ownership or non-assigned doctors probing claimed cases receive `404 Not Found` (anti-probing invariant).
+  7. **Claim/Release Invariants & AI Step Fallback Guarantees (Guidance for AI Task):**
+     - Case claiming (`POST /cases/{id}/claim`) is allowed **strictly and exclusively from `ai_analyzed`** when no clinician is assigned (`assigned_doctor_id == null`). Claiming from any other state (including `queued`) returns `409 Conflict`.
+     - Voluntary release (`POST /cases/{id}/release`) transitions `under_review -> ai_analyzed`, unassigning the doctor and returning the case to the claimable pool while preserving the existing AI inference output.
+     - **Requirement for the AI task:** The AI pipeline step (`queued -> ai_analyzed`) must always advance the case to `ai_analyzed`, even when model inference fails, times out, or errors out. In failure scenarios, an `ai_status` of `'unavailable'` (or `'completed'` on success) must be stored on the case document. This guarantees cases are never stranded in `queued` and clinicians can always claim and triage them manually.

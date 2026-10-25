@@ -213,16 +213,17 @@ export async function login2fa(
 export async function registerPatient(
   email: string,
   password: string,
-  consentVersionAgreed: string,
-  consentTimestamp: string
-): Promise<{ message: string; user_id: string }> {
+  dateOfBirth: string,
+  consentVersion: string
+): Promise<{ message: string; user_id: string; access_token?: string }> {
   const res = await apiFetch("/auth/register", {
     method: "POST",
     body: JSON.stringify({
       email,
       password,
-      consent_version_agreed: consentVersionAgreed,
-      consent_timestamp: consentTimestamp,
+      date_of_birth: dateOfBirth,
+      consent_version: consentVersion,
+      consent_accepted: true,
     }),
   });
 

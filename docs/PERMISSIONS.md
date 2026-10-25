@@ -120,8 +120,8 @@ This document defines the authoritative permissions, resource ownership rules, a
     - **Unassigned Pool Cases:** Metadata viewer only (`200 OK`: reference ID, age, urgency, waiting time, anatomical sites; **no photographs and no medical history**).
   - `GET /cases/{id}/images/{image_id}`: Inspect original clinical photographs for assigned or second-opinion cases. Returns `404 Not Found` on unassigned pool cases or cases assigned to other doctors.
   - `GET /cases/{id}/heatmap`: Inspect Grad-CAM attention heatmap for assigned or second-opinion cases. Returns `404 Not Found` on pool cases.
-  - `POST /cases/{id}/claim`: Claim an unassigned case from the pool (assigns case to `current_user.id`; `200 OK` when `assigned_doctor_id == null` in `queued` or `ai_analyzed`). Calling claim on an already assigned case returns **`409 Conflict`**.
-  - `POST /cases/{id}/release`: Voluntarily release an assigned case back to `queued` with mandatory `reason_code` and optional `reason_text` (allowed only in `under_review`).
+  - `POST /cases/{id}/claim`: Claim an unassigned case from the pool (assigns case to `current_user.id`; `200 OK` when `assigned_doctor_id == null` in `ai_analyzed`). Calling claim on an already assigned case returns **`409 Conflict`**. Calling claim on any state other than `ai_analyzed` returns **`409 Conflict`**.
+  - `POST /cases/{id}/release`: Voluntarily release an assigned case back to `ai_analyzed` with mandatory `reason_code` and optional `reason_text` (allowed only in `under_review`). Unassigns doctor and preserves AI analysis output.
   - `POST /cases/{id}/review`: Confirm or override AI triage prediction with structured clinical rationale (allowed only in `under_review`; primary assigned doctor only).
   - `POST /cases/{id}/retake`: Request screener retake with feedback reason (allowed only in `under_review`; transitions to `needs_retake`).
   - `POST /cases/{id}/second-opinion-request`: Request second opinion by naming a verified colleague (allowed in `under_review`; primary assigned doctor only).
@@ -270,7 +270,7 @@ This document defines the authoritative permissions, resource ownership rules, a
 The following architectural, clinical, and security decisions are finalized for the ONCOLINK platform:
 
 1. **Doctor Case Release & Reassignment (`Resolved`):**
-   - **Decision:** Yes, an assigned doctor may voluntarily release a claimed case back to the `queued` state (`under_review -> queued`). A mandatory `reason_code` and optional `reason_text` must be supplied. The `reason_code` is audited; `reason_text` is stored strictly in the case's status history.
+   - **Decision:** Yes, an assigned doctor may voluntarily release a claimed case back to the `ai_analyzed` state (`under_review -> ai_analyzed`), retaining the existing AI inference output while unassigning the doctor. A mandatory `reason_code` and optional `reason_text` must be supplied. The `reason_code` is audited; `reason_text` is stored strictly in the case's status history.
    - **SLA Invariant:** Automatic SLA re-assignment timers (SPEC section 7: urgent < 4h, soon < 24h, routine < 48h) remain active concurrently.
 2. **Screener Visibility & Community Camps (`Resolved`):**
    - **Decision:** No shared visibility across screeners. Each field screener sees exclusively cases they individually created (`case.created_by == current_user.id`).
@@ -292,7 +292,7 @@ The following architectural, clinical, and security decisions are finalized for 
      - For unauthenticated screener-created profiles: Screener submits an erasure request via `POST /patients/{id}/erasure-request`. Administrator executes erasure via `POST /admin/patients/{id}/erase`. Admin sees only structural IDs and counts, never clinical content. Audited strictly by ID.
      - **Platform Limitation:** A person screened by a screener can request erasure only through that screener. Because they hold no authenticated account, self-service `DELETE /me/data` is inaccessible to them. Hospital-held copies are listed as a known platform limitation. Staff accounts are deactivated, never purged.
 9. **Case Assignment Workflow & Pool Visibility (`Resolved`):**
-   - **Decision:** Automatic case assignment by availability and capacity is the default per SPEC section 7. Unverified doctors are never auto-assigned cases. Assigned doctors see full clinical data. Unassigned cases appear in a pool displaying only reference ID, age, urgency, waiting time, and anatomical sites (no photos or history) via `GET /cases/{id}` until claimed by a verified doctor (`POST /cases/{id}/claim` -> `200 OK`). An assigned doctor calling claim on an already assigned case receives `409 Conflict`. Claiming applies exclusively to the unassigned pool.
+   - **Decision:** Automatic case assignment by availability and capacity is the default per SPEC section 7. Unverified doctors are never auto-assigned cases. Assigned doctors see full clinical data. Unassigned cases appear in a pool in `ai_analyzed` displaying only reference ID, age, urgency, waiting time, and anatomical sites (no photos or history) via `GET /cases/{id}` until claimed by a verified doctor (`POST /cases/{id}/claim` -> `200 OK`). An assigned doctor calling claim on an already assigned case receives `409 Conflict`. Claiming applies exclusively to unassigned cases in `ai_analyzed`. Calling claim on any other state (including `queued`) returns `409 Conflict`.
 10. **Definition of Confirmed (`Resolved`):**
     - **Decision:** The case enters `confirmed` when the partner hospital accepts the referral and an appointment exists. The patient's confirmation is recorded on the appointment entity only, never blocks the case, and an unconfirmed appointment keeps triggering reminders.
 11. **Second Opinion Separation & Write Boundary (`Resolved`):**
@@ -313,8 +313,8 @@ For every write endpoint, the table below defines the exact case, appointment, o
 | `POST /cases/{id}/history` | `draft`, `needs_retake` | Saves questionnaire answers | Any other case state returns 409 |
 | `POST /cases/{id}/submit` | `draft`, `needs_retake` | Moves case to `submitted` | Any other case state returns 409 |
 | `POST /cases/{id}/cancel` | Prior to `signed` (`draft`, `submitted`, `quality_check`, `needs_retake`, `queued`, `ai_analyzed`, `under_review`, `uncertain_needs_inperson`) | Moves case to `cancelled` | `signed`, `referred`, or any subsequent state returns 409 |
-| `POST /cases/{id}/claim` | `queued`, `ai_analyzed` (with `assigned_doctor_id == null`) | Assigns doctor; moves case to `under_review` | Already assigned (calling claim on assigned case returns 409) or non-pool state returns 409 |
-| `POST /cases/{id}/release` | `under_review` (assigned to caller) | Unassigns doctor; moves case to `queued` | Any other state returns 409 |
+| `POST /cases/{id}/claim` | `ai_analyzed` (with `assigned_doctor_id == null`) | Assigns doctor; moves case to `under_review` | Already assigned (calling claim on assigned case returns 409) or non-pool state (including `queued`) returns 409 |
+| `POST /cases/{id}/release` | `under_review` (assigned to caller) | Unassigns doctor; moves case to `ai_analyzed` | Any other state returns 409 |
 | `POST /cases/{id}/review` | `under_review` | Records confirm/override rationale | Any other state returns 409 |
 | `POST /cases/{id}/retake` | `under_review` | Moves case to `needs_retake` | Any other state returns 409 |
 | `POST /cases/{id}/second-opinion-request` | `under_review` (assigned to caller) | Names verified colleague as second opinion doctor | Any other state returns 409 |

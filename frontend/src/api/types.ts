@@ -48,3 +48,18 @@ export interface CreateStaffPayload {
   role: "screener" | "doctor" | "hospital_coordinator" | "admin";
   registration_number?: string;
 }
+
+export interface PatientRegisterPayload {
+  email: string;
+  password: string;
+  date_of_birth: string;
+  consent_version: string;
+  consent_accepted: boolean;
+}
+
+export interface RegisterResponse {
+  access_token: string;
+  token_type: string;
+  user_id: string;
+  requires_2fa?: boolean;
+}

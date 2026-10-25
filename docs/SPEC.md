@@ -41,7 +41,7 @@ The backend enforces these transitions. Illegal jumps are rejected, and every tr
 draft -> submitted -> quality_check
 quality_check -> needs_retake -> submitted      (photo quality check failed)
 quality_check -> queued -> ai_analyzed -> under_review
-under_review -> queued                          (doctor voluntary release)
+under_review -> ai_analyzed                     (doctor voluntary release; keeps AI result)
 under_review -> needs_retake -> submitted      (doctor requested photo retake)
 under_review -> uncertain_needs_inperson        (AI or doctor cannot assess remotely)
 under_review -> signed
@@ -57,11 +57,13 @@ red_flag (emergency) is entered from submitted and jumps to the top of the queue
 
 **Rules & Definitions**
 - **Definition of Confirmed:** The case enters `confirmed` when the hospital accepts the referral and an appointment exists. The patient's confirmation is recorded on the appointment only, never blocks the case, and an unconfirmed appointment keeps triggering reminders.
+- **Claim & Release Invariants:** Case claiming (`POST /cases/{id}/claim`) is permitted **ONLY** from `ai_analyzed` when no doctor is assigned (`assigned_doctor_id == null`). Claiming from any other state (including `queued`) returns `409 Conflict`. Voluntary doctor release (`POST /cases/{id}/release`) transitions `under_review -> ai_analyzed`, unassigning the doctor while retaining existing AI inference results.
+- **AI Step Guarantees:** The automated AI analysis step (`queued -> ai_analyzed`) must always reach `ai_analyzed`, even when the model fails, times out, or is unreachable, storing an `ai_status` of `completed` or `unavailable` on the case document.
 - Only a verified doctor can move a case to `signed`.
 - Only a hospital coordinator can set `attended` and `outcome_recorded`.
 - Red-flag detection is rule-based on the questionnaire, never left to the AI alone.
 - Case cancellation is permitted only prior to `signed` from the allowed states (`draft`, `submitted`, `quality_check`, `needs_retake`, `queued`, `ai_analyzed`, `under_review`, `uncertain_needs_inperson`). Once a case is signed or referred, cancellation is rejected with `409 Conflict`.
-- `consent_withdrawn` is reachable from any state via data deletion (`DELETE /me/data` or `POST /admin/patients/{id}/erase`).
+- `consent_withdrawn` is reachable from any state via patient data deletion (`DELETE /me/data`) or system-executed data erasure (`POST /admin/patients/{id}/erase`). The `admin` role has zero allowed direct edges in the state machine table.
 
 ### State Machine Transition Rules
 
@@ -73,9 +75,9 @@ red_flag (emergency) is entered from submitted and jumps to the top of the queue
 | `quality_check -> needs_retake` | System | Automated image focus, lighting, or framing check failed |
 | `quality_check -> queued` | System | Image quality check passed; case enters unassigned clinical review queue |
 | `needs_retake -> submitted` | Patient, Screener | Replacement oral photographs captured and uploaded (`POST /cases/{id}/images`) |
-| `queued -> ai_analyzed` | System | Locked PyTorch model runs inference; outputs predicted class, calibrated confidence, Grad-CAM heatmap |
-| `ai_analyzed -> under_review` | Doctor (Verified), System | Case claimed from unassigned pool (`POST /cases/{id}/claim`) or assigned by automatic capacity engine |
-| `under_review -> queued` | Doctor (Verified, Assigned) | Assigned doctor voluntarily releases case (`POST /cases/{id}/release`) with mandatory `reason_code` |
+| `queued -> ai_analyzed` | System | Locked PyTorch model runs inference; outputs predicted class, calibrated confidence, Grad-CAM heatmap. Always reaches `ai_analyzed` with `ai_status: completed` or `unavailable` |
+| `ai_analyzed -> under_review` | Doctor (Verified), System | Case claimed from unassigned pool (`POST /cases/{id}/claim`) when `assigned_doctor_id == null` in `ai_analyzed`, or assigned by automatic capacity engine. Claim is allowed ONLY from `ai_analyzed` |
+| `under_review -> ai_analyzed` | Doctor (Verified, Assigned) | Assigned doctor voluntarily releases case (`POST /cases/{id}/release`) with mandatory `reason_code`. Unassigns doctor and returns case to the unassigned pool; existing AI inference output is retained |
 | `under_review -> needs_retake` | Doctor (Verified, Assigned) | Assigned doctor requests retake (`POST /cases/{id}/retake`) with clinical feedback reason |
 | `under_review -> uncertain_needs_inperson` | Doctor (Verified, Assigned) | Lesion cannot be assessed remotely; flagged for mandatory in-person diagnostic evaluation |
 | `under_review -> signed` | Doctor (Verified, Assigned) | Review completed (AI confirmed/overridden); digitally signed with doctor registration number |
@@ -93,7 +95,7 @@ red_flag (emergency) is entered from submitted and jumps to the top of the queue
 | `attended -> outcome_recorded` | Hospital Coordinator | Histopathology biopsy confirmation and staging recorded (`POST /appointments/{id}/outcome`) |
 | `outcome_recorded -> closed` | System, Hospital Coordinator | Final clinical outcome documented; case lifecycle concluded |
 | Before `signed` -> `cancelled` | Patient (Owner), Screener (Creator) | Allowed strictly prior to `signed` from: `draft`, `submitted`, `quality_check`, `needs_retake`, `queued`, `ai_analyzed`, `under_review`, `uncertain_needs_inperson`. Attempting cancellation at or after `signed` returns `409 Conflict`. Doctors, coordinators, and admins cannot cancel cases |
-| Any state -> `consent_withdrawn` | Patient, Admin | Triggered by patient right to be forgotten (`DELETE /me/data`) or admin execution of screener erasure request (`POST /admin/patients/{id}/erase`). Clinical images and histories purged; active referrals marked `consent_withdrawn` |
+| Any state -> `consent_withdrawn` | Patient, System | Triggered by patient right to be forgotten (`DELETE /me/data`) or system execution of screener erasure request. Clinical images and histories purged; active referrals marked `consent_withdrawn`. The admin role has zero allowed transitions in the state table |
 
 ## 5. Screening module
 

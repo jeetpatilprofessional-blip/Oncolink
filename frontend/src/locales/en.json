@@ -75,6 +75,7 @@
     "register_title": "Patient Registration",
     "register_subtitle": "Create a personal account to view your oral screening records",
     "confirm_password_label": "Confirm password",
+    "date_of_birth_label": "Date of birth",
     "consent_title": "Informed Consent for Research and Triage",
     "consent_checkbox": "I have read and agree to the research consent terms above",
     "register_button": "Create patient account",
@@ -150,6 +151,7 @@
     "user_already_exists": "An account with this email address already exists.",
     "password_too_short": "Password must be at least 10 characters long.",
     "password_equals_email": "Password cannot match your email address.",
+    "under_18": "You must be 18 or older to register.",
     "registration_number_required": "Doctor registration number is required.",
     "cannot_deactivate_self": "You cannot deactivate your own account.",
     "generic_error": "An unexpected error occurred. Please try again."

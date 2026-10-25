@@ -99,8 +99,7 @@ class ReasonCode(str, Enum):
     SCREENER_CANCELLED = "screener_cancelled"
     CONSENT_WITHDRAWN = "consent_withdrawn"
 
-    # Administrative & Miscellaneous
-    ADMIN_CORRECTION = "admin_correction"
+    # Miscellaneous
     OTHER = "other"
 
 

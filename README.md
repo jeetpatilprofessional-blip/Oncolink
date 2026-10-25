@@ -75,12 +75,14 @@ Generate strong random secrets before deployment using the following commands:
 - **Adult-Only Policy:** `POST /auth/register` and `POST /patients` validate date of birth (`AdultDateOfBirth`), strictly rejecting any individual under 18 years of age ($age \ge 18$).
 - **Case Reference Codes:** Random, non-sequential 8-character codes grouped 4-4 (e.g. `K9W2-P7M4`) with collision retry and unique indexing.
 - **Authoritative State Machine:** Status changes execute exclusively via `app.services.state_machine.transition()` within a single atomic MongoDB multi-document transaction with optimistic concurrency control (`version` counter; concurrent stale writes return `409 Conflict`).
+- **Claim & Release Lifecycle:** Claiming is permitted strictly from `ai_analyzed` when unassigned (`assigned_doctor_id == null`). Voluntary doctor release transitions `under_review -> ai_analyzed` (unassigning the doctor while retaining the AI inference output). The AI triage step (`queued -> ai_analyzed`) is guaranteed to always reach `ai_analyzed`, recording `ai_status: "completed" | "unavailable"`.
+- **Zero-Edge Admin Invariant:** The administrative role has exactly zero allowed edges in the state machine transition table. Patient data erasure via right-to-be-forgotten is executed under actor role `system` or `patient`, never `admin`.
 - **Privacy Partitioning:** Status transitions append clinical notes (`reason_text`) strictly to `case.status_history`, while writing structural IDs and authoritative `reason_code` values ONLY to `audit_log`. Free-text clinical notes never leak into administrative audit logs.
 - **Endpoints:**
   - `POST /patients`: Screener creates unauthenticated camp screening profile ($age \ge 18$).
   - `POST /cases`: Patient drafts self-screening case or screener drafts case for a screener-created patient.
   - `GET /cases`: Role-scoped list (patient sees own cases; screener sees own created cases; others receive 403).
-  - `GET /cases/{id}`: Role-scoped viewer (patient/screener receive status view; verified doctor on pool case in `queued`/`ai_analyzed` receives metadata-only view; assigned/2nd-opinion doctor receives full clinical view; admin/coordinator receive 403; wrong ownership returns 404).
+  - `GET /cases/{id}`: Role-scoped viewer (patient/screener receive status view; verified doctor on pool case in `ai_analyzed` receives metadata-only view; assigned/2nd-opinion doctor receives full clinical view; admin/coordinator receive 403; wrong ownership returns 404).
   - `POST /cases/{id}/cancel`: Cancel case prior to signing (`draft`, `submitted`, `quality_check`, `needs_retake`, `queued`, `ai_analyzed`, `under_review`, `uncertain_needs_inperson`); post-signing states return `409 Conflict`.
   - `GET /cases/{id}/timeline`: Status timeline for assigned or second-opinion doctor (others 403 or 404).
   - `POST /consent`: Extended to record informed consent with `patient_id` (self-signed or screener in-person).
@@ -173,13 +175,13 @@ npm run test
 ```powershell
 npm run test:backend
 ```
-*(Executes 50 test cases in pytest covering role cross-matrix enforcement, `GET /auth/me`, CORS headers, unauthenticated rejection, argon2 hashing, refresh rotation & reuse detection, account lockout, TOTP enrollment/login, recovery codes, consent verification, AuditService immutability, case foundation state machine transitions, adult-only age enforcement, rollback atomicity, concurrency conflict detection, and audit privacy partitioning).*
+*(Executes 179 test cases in pytest covering role cross-matrix enforcement across 94 granular endpoint-persona cells, database-backed execution of all 35 allowed edges, pure function 3,174 transition evaluations, zero-edge admin invariant, `GET /auth/me`, CORS headers, unauthenticated rejection, argon2 hashing, refresh rotation & reuse detection, account lockout, TOTP enrollment/login, recovery codes, consent verification, AuditService immutability, adult-only age enforcement, rollback atomicity, concurrency conflict detection, and audit privacy partitioning).*
 
 ### Run Frontend Tests Only
 ```powershell
 npm run test:frontend
 ```
-*(Executes 34 vitest test cases covering login 2-step flow, patient consent requirement, in-memory token security, single-flight refresh under parallel 401s, 2FA setup recovery codes confirmation, role route redirects, and axe-core zero-violation audits across all screens).*
+*(Executes 38 vitest test cases covering registration date-of-birth input, client-side adult-only age validation, login 2-step flow, patient consent requirement, in-memory token security, single-flight refresh under parallel 401s, 2FA setup recovery codes confirmation, role route redirects, and axe-core zero-violation audits across all screens).*
 
 ---
 
