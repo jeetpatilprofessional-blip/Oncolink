@@ -88,7 +88,7 @@ Evaluated across the 5 cross-validation folds (259 images) with 95% group bootst
 
 | Baseline Model | Input Features | Cross-Validated AUC (95% CI) | Sensitivity (95% CI) | Specificity (95% CI) |
 |---|---|---|---|---|
-| **Majority Class** | Class prevalence | 0.4770 [0.4070, 0.5470] | 0.1890 [0.1194, 0.2500] | 0.7803 [0.7049, 0.8560] |
+| **Majority Class (Corrected)** | Predicts constant training majority | **0.5000 [0.5000, 0.5000]** | **0.0000 [0.0000, 0.0000]** | **1.0000 [1.0000, 1.0000]** |
 | **Metadata-Only (Logistic Regression)** | `width`, `height`, `aspect_ratio`, `file_size`, `bytes_per_pixel` | **0.7774 [0.7165, 0.8313]** | **0.6772 [0.5948, 0.7652]** | **0.7045 [0.6222, 0.7812]** |
 | **Frozen EfficientNet-B0 (Logistic Regression)** | 1280-dim frozen embeddings | **0.8803 [0.8358, 0.9205]** | **0.8031 [0.7297, 0.8647]** | **0.8030 [0.7280, 0.8710]** |
 
@@ -100,7 +100,45 @@ Evaluated across the 5 cross-validation folds (259 images) with 95% group bootst
 
 ---
 
-## 6. How to Reproduce (PowerShell)
+## 6. Dataset Shortcut Investigation & Non-Lesion Signal Analysis
+
+A dedicated investigation ([`ml/scripts/analyze_shortcuts.py`](scripts/analyze_shortcuts.py), tracked in [`ml/reports/shortcut_analysis.json`](reports/shortcut_analysis.json) and [`ml/reports/capture_source.json`](reports/capture_source.json)) dissected the root causes of the dataset bias:
+
+### 6.1 Single-Feature Metadata Drivers
+Evaluating each metadata property on its own across the 5 cross-validation folds:
+* `bytes_per_pixel`: **AUC = 0.7707** [0.7100, 0.8248] (primary driver)
+* `height`: **AUC = 0.7634** [0.7008, 0.8254]
+* `width`: **AUC = 0.7576** [0.6935, 0.8173]
+* `file_size`: **AUC = 0.6799** [0.6116, 0.7458]
+* `aspect_ratio`: **AUC = 0.4655** [0.3962, 0.5359]
+* `exif_present`: **AUC = 0.5285** [0.4618, 0.5977]
+* `format_is_jpeg`: **AUC = 0.5000** [0.5000, 0.5000] (100% JPEG)
+
+**Root Cause:** EXIF inspection reveals benign images were collected primarily using modern smartphones (Samsung Galaxy M31 64MP sensor, median 620x646px up to 9248px), whereas malignant images are heavily downsampled crops acquired with older budget devices (Samsung Galaxy Core Prime 5MP sensor, median 426x415px).
+
+### 6.2 Standardisation Before & After
+Standardisation (resizing short side to 256, centre-cropping 224x224, re-encoding to JPEG at quality 90 in memory, stripping all EXIF):
+* **Metadata Baseline:** Drops from **AUC 0.7774 [0.7165, 0.8313]** before standardisation to **AUC 0.5599 [0.4928, 0.6308]** after standardisation (confidence interval crosses chance 0.50).
+* **Frozen EfficientNet-B0 Baseline:** **AUC 0.8803 [0.8358, 0.9205]** before standardisation $\rightarrow$ **AUC 0.8717 [0.8241, 0.9092]** after standardisation.
+
+### 6.3 Shortcut Probes on Standardised Images
+Probing non-lesion visual signals across the 5 folds:
+1. **Probe (a) - 8x8 Colour Thumbnail (192 features):** AUC = **0.5919** [0.5172, 0.6592].
+2. **Probe (b) - Border-Only / Centre 60% Masked Out:** AUC = **0.8338** [0.7780, 0.8827].
+3. **Probe (c) - Centre 60% Crop Only:** AUC = **0.8428** [0.7911, 0.8873].
+4. **Probe (d) - HSV Colour Statistics (6 features):** AUC = **0.6730** [0.6053, 0.7312].
+
+> [!WARNING]
+> **SEVERE NON-LESION SHORTCUT FINDING**
+> When the centre 60% of the image (the lesion itself) is completely blacked out, frozen EfficientNet-B0 embeddings still achieve **AUC = 0.8338**, almost identical to the centre lesion crop (**AUC = 0.8428**). Furthermore, 6 global HSV colour statistics achieve **AUC = 0.6730**.
+>
+> **What This Implies for Later Models:** Any deep neural network trained on this dataset can discriminate benign from malignant with > 0.83 AUC using strictly peripheral background lighting falloff, mucosal tint, and capture-source artifacts without ever learning lesion morphology. All subsequent modeling must apply aggressive spatial and color augmentations, background masking, and strict evaluation against out-of-distribution external datasets.
+>
+> **Limitation:** All findings remain limited by the total absence of patient identifiers in the source dataset (Decision 17). Even though near-duplicate groups were preserved, cross-validation metrics may still be optimistic due to unlabelled patient overlap across remaining images.
+
+---
+
+## 7. How to Reproduce (PowerShell)
 
 All commands are executed inside the Docker container:
 

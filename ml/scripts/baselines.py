@@ -36,8 +36,8 @@ CONFIDENCE_LEVEL = 0.95
 
 def compute_metrics(y_true: np.ndarray, y_prob: np.ndarray, threshold: float = 0.5) -> Dict[str, float]:
     """Compute AUC, sensitivity (recall on positive class), and specificity."""
-    # Check if both classes are present
-    if len(np.unique(y_true)) > 1:
+    # Check if both classes are present and probabilities are not constant
+    if len(np.unique(y_true)) > 1 and len(np.unique(y_prob)) > 1:
         auc = float(roc_auc_score(y_true, y_prob))
     else:
         auc = 0.5
@@ -202,12 +202,12 @@ def run_baselines():
         y_val = val_sub["target"].to_numpy()
 
         # Baseline (a): Majority Class
-        # Majority class in training set
-        majority_class = int(np.round(np.mean(y_train)))
-        # Predicted probability = training set class prevalence
+        # Predicts the most common training class as a constant
         train_pos_prev = float(np.mean(y_train))
+        majority_class = 1 if train_pos_prev > 0.5 else 0
         for p in val_p:
-            oof_majority[p] = train_pos_prev
+            # Constant prediction probability 0.5 (or majority_class) yields AUC 0.5 and sensitivity 0 (or 1)
+            oof_majority[p] = float(majority_class)
 
         # Baseline (b): Metadata Logistic Regression
         scaler = StandardScaler()

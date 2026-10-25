@@ -163,6 +163,20 @@ This document records authoritative technical and architectural decisions for th
      - Cross-validated logistic regression on image metadata alone (`width`, `height`, `aspect_ratio`, `file_size`, `bytes_per_pixel`) achieves an **AUC of 0.7774 (95% CI: [0.7165, 0.8313])**, substantially and statistically significantly above chance (0.50).
      - **Implication:** Raw image labels strongly correlate with acquisition hardware, image dimensions, and JPEG compression ratios rather than oral mucosal pathology alone. Any model trained on raw unstandardized images risks learning these non-clinical file shortcuts. All future modeling must rigorously evaluate and report metadata correlation.
 
+## Decision 20: Empirical Shortcut Dissection, Non-Lesion Prediction Signals, and Model Constraints
+
+* **Decision:**
+  1. **Acquisition Confound Identified:** Single-feature metadata evaluation proves the shortcut effect is driven primarily by `bytes_per_pixel` (AUC 0.7707 [0.7100, 0.8248]), image `height` (AUC 0.7634 [0.7008, 0.8254]), and image `width` (AUC 0.7576 [0.6935, 0.8173]). EXIF inspection demonstrates that benign cases were acquired on modern high-resolution sensors (Samsung Galaxy M31 64MP sensor, mean 973x994px up to 9248px), whereas malignant cases were captured on older budget hardware (Samsung Galaxy Core Prime 5MP sensor, mean 485x475px, median 426x415px).
+  2. **Standardisation Efficacy:** In-memory standardisation (resizing short side to 256, centre-cropping 224x224, re-encoding to JPEG at quality 90 with zero EXIF) neutralizes the file-property shortcut: metadata baseline AUC collapses from 0.7774 [0.7165, 0.8313] down to 0.5599 [0.4928, 0.6308] (crossing chance 0.50).
+  3. **Severe Non-Lesion Image Shortcut Reality:** Shortcut probes on standardised images establish:
+     - **Border-Only / Background:** When the centre 60% of the image (the lesion area) is completely blanked out to zero, frozen EfficientNet-B0 embeddings achieve an **AUC of 0.8338 [0.7780, 0.8827]**, virtually indistinguishable from the centre crop alone (**AUC 0.8428 [0.7911, 0.8873]**).
+     - **Colour Tone:** 6 simple HSV colour statistics (mean and standard deviation per channel) predict malignancy with an **AUC of 0.6730 [0.6053, 0.7312]**.
+  4. **Implications for Later Modeling:**
+     - The neural network can discriminate benign from malignant with over 0.83 AUC strictly by observing peripheral mucosa, background lighting falloff, and capture-device colour casts without ever inspecting the lesion itself.
+     - Any future convolutional or transformer model trained on this dataset will exploit these non-lesion background shortcuts unless aggressively regularized (colour jitter, strong spatial augmentations, outside-domain transfer).
+  5. **Limitation Caveat:** All findings remain limited by the total absence of patient identifiers in the source dataset (Decision 17). Even though whole duplicate groups were preserved, cross-validation metrics may remain optimistic due to unlabelled patient overlap across remaining images.
+
+
 
 
 

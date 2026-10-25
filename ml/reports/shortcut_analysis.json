@@ -1,0 +1,381 @@
+{
+  "dataset_evaluated": "mendeley_karnataka (80% train_pool, 5 folds, 259 images)",
+  "single_feature_aucs": {
+    "width": {
+      "auc": {
+        "point": 0.7576,
+        "ci_95": [
+          0.6935,
+          0.8173
+        ]
+      },
+      "sensitivity": {
+        "point": 0.7717,
+        "ci_95": [
+          0.7031,
+          0.8451
+        ]
+      },
+      "specificity": {
+        "point": 0.5909,
+        "ci_95": [
+          0.5,
+          0.6741
+        ]
+      }
+    },
+    "height": {
+      "auc": {
+        "point": 0.7634,
+        "ci_95": [
+          0.7008,
+          0.8254
+        ]
+      },
+      "sensitivity": {
+        "point": 0.8031,
+        "ci_95": [
+          0.7293,
+          0.8722
+        ]
+      },
+      "specificity": {
+        "point": 0.5833,
+        "ci_95": [
+          0.4999,
+          0.6714
+        ]
+      }
+    },
+    "aspect_ratio": {
+      "auc": {
+        "point": 0.4655,
+        "ci_95": [
+          0.3962,
+          0.5359
+        ]
+      },
+      "sensitivity": {
+        "point": 0.126,
+        "ci_95": [
+          0.0709,
+          0.184
+        ]
+      },
+      "specificity": {
+        "point": 0.7652,
+        "ci_95": [
+          0.6846,
+          0.8359
+        ]
+      }
+    },
+    "file_size": {
+      "auc": {
+        "point": 0.6799,
+        "ci_95": [
+          0.6116,
+          0.7458
+        ]
+      },
+      "sensitivity": {
+        "point": 0.9134,
+        "ci_95": [
+          0.8607,
+          0.958
+        ]
+      },
+      "specificity": {
+        "point": 0.2727,
+        "ci_95": [
+          0.1971,
+          0.3485
+        ]
+      }
+    },
+    "bytes_per_pixel": {
+      "auc": {
+        "point": 0.7707,
+        "ci_95": [
+          0.71,
+          0.8248
+        ]
+      },
+      "sensitivity": {
+        "point": 0.5669,
+        "ci_95": [
+          0.4809,
+          0.6509
+        ]
+      },
+      "specificity": {
+        "point": 0.8106,
+        "ci_95": [
+          0.7407,
+          0.875
+        ]
+      }
+    },
+    "format_is_jpeg": {
+      "auc": {
+        "point": 0.5,
+        "ci_95": [
+          0.5,
+          0.5
+        ]
+      },
+      "sensitivity": {
+        "point": 0.0,
+        "ci_95": [
+          0.0,
+          0.0
+        ]
+      },
+      "specificity": {
+        "point": 1.0,
+        "ci_95": [
+          1.0,
+          1.0
+        ]
+      }
+    },
+    "exif_present": {
+      "auc": {
+        "point": 0.5285,
+        "ci_95": [
+          0.4618,
+          0.5977
+        ]
+      },
+      "sensitivity": {
+        "point": 1.0,
+        "ci_95": [
+          1.0,
+          1.0
+        ]
+      },
+      "specificity": {
+        "point": 0.0985,
+        "ci_95": [
+          0.0504,
+          0.1527
+        ]
+      }
+    }
+  },
+  "standardisation_comparison": {
+    "metadata_baseline": {
+      "raw_before": {
+        "features": [
+          "width",
+          "height",
+          "aspect_ratio",
+          "file_size",
+          "bytes_per_pixel"
+        ],
+        "above_chance": true,
+        "auc": {
+          "point": 0.7774,
+          "ci_95": [
+            0.7165,
+            0.8313
+          ]
+        },
+        "sensitivity": {
+          "point": 0.6772,
+          "ci_95": [
+            0.5948,
+            0.7652
+          ]
+        },
+        "specificity": {
+          "point": 0.7045,
+          "ci_95": [
+            0.6222,
+            0.7812
+          ]
+        }
+      },
+      "standardised_after": {
+        "auc": {
+          "point": 0.5599,
+          "ci_95": [
+            0.4928,
+            0.6308
+          ]
+        },
+        "sensitivity": {
+          "point": 0.5591,
+          "ci_95": [
+            0.4709,
+            0.6541
+          ]
+        },
+        "specificity": {
+          "point": 0.4773,
+          "ci_95": [
+            0.3898,
+            0.563
+          ]
+        }
+      }
+    },
+    "efficientnet_b0_baseline": {
+      "raw_before": {
+        "model": "efficientnet_b0",
+        "weights_url": "https://download.pytorch.org/models/efficientnet_b0_rwightman-7f5810bc.pth",
+        "weights_sha256": "7f5810bc96def8f7552d5b7e68d53c4786f81167d28291b21c0d90e1fca14934",
+        "auc": {
+          "point": 0.8803,
+          "ci_95": [
+            0.8358,
+            0.9205
+          ]
+        },
+        "sensitivity": {
+          "point": 0.8031,
+          "ci_95": [
+            0.7297,
+            0.8647
+          ]
+        },
+        "specificity": {
+          "point": 0.803,
+          "ci_95": [
+            0.728,
+            0.871
+          ]
+        }
+      },
+      "standardised_after": {
+        "auc": {
+          "point": 0.8717,
+          "ci_95": [
+            0.8241,
+            0.9092
+          ]
+        },
+        "sensitivity": {
+          "point": 0.8031,
+          "ci_95": [
+            0.7295,
+            0.8629
+          ]
+        },
+        "specificity": {
+          "point": 0.8182,
+          "ci_95": [
+            0.7422,
+            0.8837
+          ]
+        }
+      }
+    }
+  },
+  "shortcut_probes": {
+    "probe_a_8x8_thumbnail": {
+      "description": "Logistic regression on 8x8 RGB colour thumbnail (192 features)",
+      "results": {
+        "auc": {
+          "point": 0.5919,
+          "ci_95": [
+            0.5172,
+            0.6592
+          ]
+        },
+        "sensitivity": {
+          "point": 0.5197,
+          "ci_95": [
+            0.4308,
+            0.6063
+          ]
+        },
+        "specificity": {
+          "point": 0.6288,
+          "ci_95": [
+            0.5433,
+            0.7177
+          ]
+        }
+      }
+    },
+    "probe_b_border_only_masked_centre": {
+      "description": "Frozen EfficientNet-B0 embeddings with centre 60% masked out to black (border & background only)",
+      "results": {
+        "auc": {
+          "point": 0.8338,
+          "ci_95": [
+            0.778,
+            0.8827
+          ]
+        },
+        "sensitivity": {
+          "point": 0.7717,
+          "ci_95": [
+            0.7009,
+            0.8455
+          ]
+        },
+        "specificity": {
+          "point": 0.7879,
+          "ci_95": [
+            0.7101,
+            0.8563
+          ]
+        }
+      }
+    },
+    "probe_c_centre_crop_only": {
+      "description": "Frozen EfficientNet-B0 embeddings on centre 60% crop resized to 224x224",
+      "results": {
+        "auc": {
+          "point": 0.8428,
+          "ci_95": [
+            0.7911,
+            0.8873
+          ]
+        },
+        "sensitivity": {
+          "point": 0.748,
+          "ci_95": [
+            0.6667,
+            0.8222
+          ]
+        },
+        "specificity": {
+          "point": 0.7879,
+          "ci_95": [
+            0.7154,
+            0.8542
+          ]
+        }
+      }
+    },
+    "probe_d_hsv_colour_stats": {
+      "description": "Logistic regression on 6 HSV colour statistics (mean and std for H, S, V channels)",
+      "results": {
+        "auc": {
+          "point": 0.673,
+          "ci_95": [
+            0.6053,
+            0.7312
+          ]
+        },
+        "sensitivity": {
+          "point": 0.6693,
+          "ci_95": [
+            0.5873,
+            0.7462
+          ]
+        },
+        "specificity": {
+          "point": 0.5833,
+          "ci_95": [
+            0.4962,
+            0.6715
+          ]
+        }
+      }
+    }
+  }
+}
