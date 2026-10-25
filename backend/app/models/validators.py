@@ -1,10 +1,42 @@
 import re
+from datetime import date, datetime
 from typing import Annotated
 
 from email_validator import EmailNotValidError, validate_email
 from pydantic import AfterValidator
 
 from app.config import get_settings
+
+
+def calculate_age(dob: date | str) -> int:
+    """Calculates age in years from date of birth."""
+    if isinstance(dob, str):
+        dob_str = dob.strip()
+        try:
+            dob_date = datetime.strptime(dob_str, "%Y-%m-%d").date()
+        except ValueError as err:
+            raise ValueError("date_of_birth must be a valid date in YYYY-MM-DD format.") from err
+    else:
+        dob_date = dob
+
+    today = date.today()
+    if dob_date > today:
+        raise ValueError("date_of_birth cannot be in the future.")
+
+    return today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
+
+
+def validate_adult_dob(dob: date | str) -> str:
+    """Validates that participant is an adult aged 18 or older."""
+    age = calculate_age(dob)
+    if age < 18:
+        raise ValueError("Participant must be an adult aged 18 or older.")
+    if isinstance(dob, date):
+        return dob.isoformat()
+    return dob.strip()
+
+
+AdultDateOfBirth = Annotated[str, AfterValidator(validate_adult_dob)]
 
 
 def validate_oncolink_email(v: str) -> str:

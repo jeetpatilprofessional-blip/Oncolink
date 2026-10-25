@@ -31,6 +31,7 @@ from app.models.user import (
     UserResponse,
     UserRole,
 )
+from app.models.validators import calculate_age
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
 from app.services.consent_service import ConsentService
@@ -83,6 +84,24 @@ async def register_patient(
     ip_addr = get_client_ip(request)
     user_agent = request.headers.get("user-agent")
 
+    # Gate: Authenticated users cannot self-register another account
+    if request.headers.get("authorization"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Authenticated users cannot register a new account.",
+        )
+
+    # 0. Validate adult age (>= 18)
+    try:
+        age = calculate_age(payload.date_of_birth)
+        if age < 18:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registration is restricted to adults aged 18 and older.",
+            )
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err)) from err
+
     # 1. Validate password strength
     try:
         auth_service.validate_password_strength(payload.password, payload.email)
@@ -131,9 +150,25 @@ async def register_patient(
     result = await db["users"].insert_one(user_doc)
     user_id = str(result.inserted_id)
 
+    # 4b. Create linked patient record
+    patient_doc = {
+        "user_id": user_id,
+        "created_by": user_id,
+        "date_of_birth": payload.date_of_birth,
+        "language": "en",
+        "contact": normalized_email,
+        "erased": False,
+        "is_demo": False,
+        "created_at": now,
+        "updated_at": now,
+    }
+    p_res = await db["patients"].insert_one(patient_doc)
+    patient_id = str(p_res.inserted_id)
+
     # 5. Record immutable consent record
     await consent_service.record_consent(
         user_id=user_id,
+        patient_id=patient_id,
         version=payload.consent_version,
         captured_by="self",
     )
@@ -611,11 +646,18 @@ async def logout(
 @router.get("/me", response_model=UserResponse)
 async def get_me(
     current_user: Annotated[UserInDB, Depends(get_current_user)],
+    db: Annotated[AsyncIOMotorDatabase, Depends(get_db)],
 ) -> UserResponse:
     """
     Returns the authenticated user's profile: id, email, role,
     verification status, and whether two-factor authentication is enrolled.
     """
+    patient_id = None
+    if current_user.role == UserRole.PATIENT:
+        patient_rec = await db["patients"].find_one({"user_id": current_user.id, "erased": False})
+        if patient_rec:
+            patient_id = str(patient_rec["_id"])
+
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
@@ -628,4 +670,5 @@ async def get_me(
         verified_by=current_user.verified_by,
         verified_at=current_user.verified_at,
         totp_enrolled=current_user.totp_enrolled,
+        patient_id=patient_id,
     )

@@ -11,7 +11,9 @@ from app.database import get_database
 from app.models.user import DoctorVerificationStatus, UserInDB, UserRole
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
+from app.services.case_service import CaseService
 from app.services.consent_service import ConsentService
+from app.services.patient_service import PatientService
 from app.services.totp_service import TOTPService
 
 security_bearer = HTTPBearer(auto_error=False)
@@ -50,6 +52,14 @@ def get_totp_service(settings: Annotated[Settings, Depends(get_current_settings)
 
 def get_consent_service(db: Annotated[AsyncIOMotorDatabase, Depends(get_db)]) -> ConsentService:
     return ConsentService(db)
+
+
+def get_patient_service(db: Annotated[AsyncIOMotorDatabase, Depends(get_db)]) -> PatientService:
+    return PatientService(db)
+
+
+def get_case_service(db: Annotated[AsyncIOMotorDatabase, Depends(get_db)]) -> CaseService:
+    return CaseService(db)
 
 
 # --- User & Role Authentication Guards ---

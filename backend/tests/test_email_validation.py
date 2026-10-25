@@ -30,6 +30,7 @@ def test_email_validation_in_dev_test_mode(monkeypatch, test_settings: Settings)
     register = PatientRegisterRequest(
         email=email,
         password="ValidPassword10!",
+        date_of_birth="1990-01-01",
         consent_version="v1",
         consent_accepted=True,
     )
@@ -138,6 +139,7 @@ async def test_production_rejects_local_email_at_registration_and_admin_staff_cr
             json={
                 "email": "demo.patient@oncolink.local",
                 "password": "ValidPassword10!",
+                "date_of_birth": "1990-01-01",
                 "consent_version": "v1",
                 "consent_accepted": True,
             },
@@ -162,6 +164,7 @@ async def test_production_rejects_local_email_at_registration_and_admin_staff_cr
             json={
                 "email": "real.patient@production-hospital.org",
                 "password": "ValidPassword10!",
+                "date_of_birth": "1990-01-01",
                 "consent_version": "v1",
                 "consent_accepted": True,
             },

@@ -3,7 +3,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.validators import OncoLinkEmail
+from app.models.validators import AdultDateOfBirth, OncoLinkEmail
 
 
 class UserRole(str, Enum):
@@ -30,6 +30,7 @@ class UserBase(BaseModel):
 class PatientRegisterRequest(BaseModel):
     email: OncoLinkEmail
     password: str = Field(min_length=10)
+    date_of_birth: AdultDateOfBirth
     consent_version: str
     consent_accepted: bool
 
@@ -59,6 +60,7 @@ class UserResponse(BaseModel):
     verified_by: str | None = None
     verified_at: datetime | None = None
     totp_enrolled: bool = False
+    patient_id: str | None = None
 
 
 class UserInDB(BaseModel):

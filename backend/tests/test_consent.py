@@ -34,6 +34,7 @@ async def test_registration_rejected_without_consent(async_client: AsyncClient):
         json={
             "email": "no_consent@example.com",
             "password": "Password123!",
+            "date_of_birth": "1990-01-01",
             "consent_version": "v1",
             "consent_accepted": False,
         },
@@ -47,6 +48,7 @@ async def test_registration_rejected_without_consent(async_client: AsyncClient):
         json={
             "email": "outdated_consent@example.com",
             "password": "Password123!",
+            "date_of_birth": "1990-01-01",
             "consent_version": "v0-deprecated",
             "consent_accepted": True,
         },
@@ -69,6 +71,7 @@ async def test_registration_creates_immutable_consent_record(
         json={
             "email": "consenting_patient@example.com",
             "password": "ValidPassword123!",
+            "date_of_birth": "1990-01-01",
             "consent_version": "v1",
             "consent_accepted": True,
         },

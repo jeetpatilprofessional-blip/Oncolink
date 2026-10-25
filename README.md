@@ -67,6 +67,24 @@ Generate strong random secrets before deployment using the following commands:
 - **Doctor Verification Guard:** Clinical sign-off endpoints enforce `require_verified_doctor`, rejecting doctors whose status is `pending` or `rejected`.
 - **Immutable Audit Trail:** All auth lifecycle events (`login_success`, `login_failure`, `lockout`, `logout`, `refresh_reuse`, `totp_enrollment`, `user_creation`, `verification_changes`, `deactivation`) append to the `audit_log` collection via `AuditService` (which purposefully exposes zero update or delete methods).
 
+### Case Foundation & State Machine Architecture
+
+- **Collections:**
+  - `patients`: Decouples participant profiles from login credentials (`user_id` nullable, `created_by`, `date_of_birth`, `language`, `contact`, `erased`, `is_demo`). Unique sparse index on `user_id` with `partialFilterExpression={"user_id": {"$type": "string"}}` prevents duplicate user accounts while supporting unlimited screener community camp profiles.
+  - `cases`: Screening entities (`patient_id`, `created_by`, `status`, `urgency`, `assigned_doctor_id`, `second_opinion_doctor_id`, `reference`, `status_history`, `version`, `timestamps`, `is_demo`).
+- **Adult-Only Policy:** `POST /auth/register` and `POST /patients` validate date of birth (`AdultDateOfBirth`), strictly rejecting any individual under 18 years of age ($age \ge 18$).
+- **Case Reference Codes:** Random, non-sequential 8-character codes grouped 4-4 (e.g. `K9W2-P7M4`) with collision retry and unique indexing.
+- **Authoritative State Machine:** Status changes execute exclusively via `app.services.state_machine.transition()` within a single atomic MongoDB multi-document transaction with optimistic concurrency control (`version` counter; concurrent stale writes return `409 Conflict`).
+- **Privacy Partitioning:** Status transitions append clinical notes (`reason_text`) strictly to `case.status_history`, while writing structural IDs and authoritative `reason_code` values ONLY to `audit_log`. Free-text clinical notes never leak into administrative audit logs.
+- **Endpoints:**
+  - `POST /patients`: Screener creates unauthenticated camp screening profile ($age \ge 18$).
+  - `POST /cases`: Patient drafts self-screening case or screener drafts case for a screener-created patient.
+  - `GET /cases`: Role-scoped list (patient sees own cases; screener sees own created cases; others receive 403).
+  - `GET /cases/{id}`: Role-scoped viewer (patient/screener receive status view; verified doctor on pool case in `queued`/`ai_analyzed` receives metadata-only view; assigned/2nd-opinion doctor receives full clinical view; admin/coordinator receive 403; wrong ownership returns 404).
+  - `POST /cases/{id}/cancel`: Cancel case prior to signing (`draft`, `submitted`, `quality_check`, `needs_retake`, `queued`, `ai_analyzed`, `under_review`, `uncertain_needs_inperson`); post-signing states return `409 Conflict`.
+  - `GET /cases/{id}/timeline`: Status timeline for assigned or second-opinion doctor (others 403 or 404).
+  - `POST /consent`: Extended to record informed consent with `patient_id` (self-signed or screener in-person).
+
 ---
 
 ## Administrator Account Provisioning
@@ -155,7 +173,7 @@ npm run test
 ```powershell
 npm run test:backend
 ```
-*(Executes 33 test cases in pytest covering role cross-matrix enforcement, `GET /auth/me`, CORS headers, unauthenticated rejection, argon2 hashing, refresh rotation & reuse detection, account lockout, TOTP enrollment/login, recovery codes, consent verification, and AuditService immutability).*
+*(Executes 50 test cases in pytest covering role cross-matrix enforcement, `GET /auth/me`, CORS headers, unauthenticated rejection, argon2 hashing, refresh rotation & reuse detection, account lockout, TOTP enrollment/login, recovery codes, consent verification, AuditService immutability, case foundation state machine transitions, adult-only age enforcement, rollback atomicity, concurrency conflict detection, and audit privacy partitioning).*
 
 ### Run Frontend Tests Only
 ```powershell

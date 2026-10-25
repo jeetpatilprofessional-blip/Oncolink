@@ -59,6 +59,34 @@ async def init_indexes(db: AsyncIOMotorDatabase) -> None:
         await db["audit_log"].create_index("actor_id")
         # Consents index
         await db["consents"].create_index("user_id")
+        await db["consents"].create_index("patient_id")
+        # Patients collection indexes
+        try:
+            await db["patients"].create_index(
+                "user_id",
+                unique=True,
+                sparse=True,
+                partialFilterExpression={"user_id": {"$type": "string"}},
+            )
+        except pymongo.errors.OperationFailure:
+            try:
+                await db["patients"].drop_index("user_id_1")
+            except Exception:
+                pass
+            await db["patients"].create_index(
+                "user_id",
+                unique=True,
+                sparse=True,
+                partialFilterExpression={"user_id": {"$type": "string"}},
+            )
+        await db["patients"].create_index("created_by")
+        # Cases collection indexes
+        await db["cases"].create_index("reference", unique=True)
+        await db["cases"].create_index("patient_id")
+        await db["cases"].create_index("created_by")
+        await db["cases"].create_index("status")
+        await db["cases"].create_index("assigned_doctor_id")
+        await db["cases"].create_index("second_opinion_doctor_id")
         logger.info("Database indexes initialized successfully")
     except Exception as exc:
         logger.warning("Index initialization notice", extra={"error": str(exc)})

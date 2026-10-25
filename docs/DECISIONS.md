@@ -78,3 +78,18 @@ This document records authoritative technical and architectural decisions for th
 
 * **Decision:** TOTP setup QR codes are generated directly in the browser as pure SVG markup using the client-side `qrcode` library. Secrets, email addresses, and `otpauth://` URIs are never sent to external chart services or third-party image generation APIs.
 * **Rationale:** Using third-party image generation services (e.g., Google Chart API) leaks cryptographic 2FA seeds and user identities over external networks. Generating SVGs client-side maintains complete data sovereignty and ensures high security in hospital networks.
+
+## Decision 14: Case Foundation, State Machine Transaction Isolation, and Privacy Boundaries
+
+* **Decision:**
+  1. **Participant Identity Architecture:** Cases reference `patient_id` from the dedicated `patients` collection, completely decoupling clinical records from authenticated login credentials. Self-registered patients receive an automatically provisioned `patients` record linked to their `user_id`. Field screeners create unauthenticated `patients` records with `user_id = null`. A unique sparse index on `user_id` with `partialFilterExpression={"user_id": {"$type": "string"}}` prevents duplicate accounts while permitting unlimited unauthenticated field profiles.
+  2. **Adult-Only Intake:** Patient self-registration and screener intake strictly enforce adult age (`age >= 18`) via date of birth validation (`AdultDateOfBirth`), blocking minors at the API boundary per SPEC section 5.1.
+  3. **State Machine Invariant & Transaction Isolation:** All case state changes are executed exclusively through the authoritative state machine service (`app.services.state_machine.transition`). No other component in the codebase may write or update a case status. Transitions execute within a single atomic MongoDB multi-document transaction with optimistic concurrency control via an incrementing integer `version` counter. A stale write immediately aborts with `409 Conflict`.
+  4. **Privacy Partitioning in Audit Logs vs Case History:** The `transition()` function appends a `status_history` entry to the case document containing transition metadata and clinical notes (`reason_text`). Simultaneously, an immutable audit event is written to `audit_log` with structural IDs and authoritative `reason_code` values ONLY. Free-text clinical notes (`reason_text`) are strictly prohibited from entering `audit_log`, ensuring administrative audit queries never expose sensitive clinical rationale or diagnostic narratives.
+  5. **Urgency Decoupling:** Review urgency (`urgent`, `soon`, `routine`) is decoupled from AI model prediction certainty. Review turnaround SLAs are driven by urgency, while calibrated confidence remains an orthogonal diagnostic metric.
+  6. **Role-Scoped Projections & Pool Access:** Case viewing (`GET /cases/{id}`) returns role-tailored projections:
+     - Patients and screeners receive status-only views (`CaseStatusResponse`).
+     - Verified doctors viewing unassigned pool cases (`queued`, `ai_analyzed`) receive metadata-only views (`CasePoolMetadataResponse` with reference, age band, urgency, wait time, sites; no photos, no questionnaire answers).
+     - Assigned and second-opinion doctors receive full clinical details (`CaseDetailResponse`).
+     - Administrators and hospital coordinators receive `403 Forbidden` (clinical isolation boundary).
+     - Wrong ownership or non-assigned doctors probing claimed cases receive `404 Not Found` (anti-probing invariant).

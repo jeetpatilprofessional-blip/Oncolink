@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from motor.motor_asyncio import AsyncIOMotorClientSession, AsyncIOMotorDatabase
 
 from app.models.audit import AuditEventType, AuditLogEntry
 
@@ -62,6 +62,7 @@ class AuditService:
         details: dict[str, Any] | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        session: AsyncIOMotorClientSession | None = None,
     ) -> str:
         """
         Appends an immutable audit log entry.
@@ -80,7 +81,7 @@ class AuditService:
             "ip_address": ip_address,
             "user_agent": user_agent,
         }
-        result = await self._collection.insert_one(entry_doc)
+        result = await self._collection.insert_one(entry_doc, session=session)
         return str(result.inserted_id)
 
     async def get_logs(

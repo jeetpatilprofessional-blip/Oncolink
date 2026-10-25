@@ -11,6 +11,7 @@ from app.models.user import DoctorVerificationStatus, UserRole
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
 from app.services.consent_service import ConsentService
+from app.services.patient_service import PatientService
 
 
 async def seed_demo_users() -> None:
@@ -145,13 +146,30 @@ async def seed_demo_users() -> None:
             existing = await db["users"].find_one({"email": email})
             user_id = str(existing["_id"])
 
-        # If patient, ensure consent is logged
+        # If patient, ensure patient profile and consent are created
         if role == UserRole.PATIENT:
+            patient_service = PatientService(db)
+            existing_patient = await patient_service.get_patient_by_user_id(user_id)
+            patient_id = None
+            if not existing_patient:
+                patient_profile = await patient_service.create_patient(
+                    created_by=user_id,
+                    date_of_birth="1990-01-01",
+                    user_id=user_id,
+                    language="en",
+                    contact=email,
+                    is_demo=True,
+                )
+                patient_id = patient_profile.id
+            else:
+                patient_id = str(existing_patient["_id"])
+
             current_consent = consent_service.get_current_consent()
             existing_consent = await consent_service.get_consent_for_user(user_id)
             if not existing_consent:
                 await consent_service.record_consent(
                     user_id=user_id,
+                    patient_id=patient_id,
                     version=current_consent.version,
                     captured_by="self_demo",
                 )

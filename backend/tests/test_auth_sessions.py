@@ -24,6 +24,7 @@ async def test_passwords_stored_as_argon2_not_plaintext(
     payload = {
         "email": "argon2_test@example.com",
         "password": "SecurePassword123!",
+        "date_of_birth": "1990-01-01",
         "consent_version": "v1",
         "consent_accepted": True,
     }
@@ -47,6 +48,7 @@ async def test_password_policy_enforcement(async_client: AsyncClient):
         json={
             "email": "short@example.com",
             "password": "Short1!",
+            "date_of_birth": "1990-01-01",
             "consent_version": "v1",
             "consent_accepted": True,
         },
@@ -59,6 +61,7 @@ async def test_password_policy_enforcement(async_client: AsyncClient):
         json={
             "email": "same_as_password@example.com",
             "password": "same_as_password@example.com",
+            "date_of_birth": "1990-01-01",
             "consent_version": "v1",
             "consent_accepted": True,
         },
@@ -86,6 +89,7 @@ async def test_refresh_token_rotation_and_reuse_detection(
         json={
             "email": "reuse_test@example.com",
             "password": "ValidPassword123!",
+            "date_of_birth": "1990-01-01",
             "consent_version": "v1",
             "consent_accepted": True,
         },
@@ -232,6 +236,7 @@ async def test_immediate_rejection_upon_deactivation(
         json={
             "email": "deactivate_test@example.com",
             "password": "Password#123!",
+            "date_of_birth": "1990-01-01",
             "consent_version": "v1",
             "consent_accepted": True,
         },
@@ -277,6 +282,7 @@ async def test_auth_me_endpoint(async_client: AsyncClient, test_mongo_client: As
         json={
             "email": "me_test@example.com",
             "password": "ValidPassword123!",
+            "date_of_birth": "1990-01-01",
             "consent_version": "v1",
             "consent_accepted": True,
         },
