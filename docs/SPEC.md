@@ -39,22 +39,61 @@ The backend enforces these transitions. Illegal jumps are rejected, and every tr
 
 ```
 draft -> submitted -> quality_check
-quality_check -> needs_retake -> submitted      (photo rejected or doctor asked for retake)
+quality_check -> needs_retake -> submitted      (photo quality check failed)
 quality_check -> queued -> ai_analyzed -> under_review
-under_review -> uncertain_needs_inperson        (AI or doctor cannot assess)
+under_review -> queued                          (doctor voluntary release)
+under_review -> needs_retake -> submitted      (doctor requested photo retake)
+under_review -> uncertain_needs_inperson        (AI or doctor cannot assess remotely)
 under_review -> signed
 signed -> closed_monitor                        (benign, re-screen reminder set)
 signed -> referred -> referral_pending -> confirmed -> attended -> outcome_recorded -> closed
 referral_pending -> declined_by_hospital -> referred   (re-refer to another hospital)
 confirmed -> no_show -> outreach -> lost_to_followup
-any state -> cancelled | consent_withdrawn
+outreach -> confirmed                           (re-scheduled after outreach)
+cancelled allowed only before signed, from: draft, submitted, quality_check, needs_retake, queued, ai_analyzed, under_review, uncertain_needs_inperson
+any state -> consent_withdrawn                  (right to be forgotten / data erasure)
 red_flag (emergency) is entered from submitted and jumps to the top of the queue
 ```
 
-**Rules**
+**Rules & Definitions**
+- **Definition of Confirmed:** The case enters `confirmed` when the hospital accepts the referral and an appointment exists. The patient's confirmation is recorded on the appointment only, never blocks the case, and an unconfirmed appointment keeps triggering reminders.
 - Only a verified doctor can move a case to `signed`.
 - Only a hospital coordinator can set `attended` and `outcome_recorded`.
 - Red-flag detection is rule-based on the questionnaire, never left to the AI alone.
+- Case cancellation is permitted only prior to `signed` from the allowed states (`draft`, `submitted`, `quality_check`, `needs_retake`, `queued`, `ai_analyzed`, `under_review`, `uncertain_needs_inperson`). Once a case is signed or referred, cancellation is rejected with `409 Conflict`.
+- `consent_withdrawn` is reachable from any state via data deletion (`DELETE /me/data` or `POST /admin/patients/{id}/erase`).
+
+### State Machine Transition Rules
+
+| Transition Edge | Allowed Role(s) | Extra Conditions / Mechanism |
+|---|---|---|
+| `draft -> submitted` | Patient, Screener | Gated by valid informed consent record for `patient_id`; photographs and clinical history present |
+| `submitted -> quality_check` | System | Automated quality assessment triggered immediately upon case submission |
+| `submitted -> red_flag` | System | Questionnaire response triggers emergency rule; jumps immediately to top of review queue |
+| `quality_check -> needs_retake` | System | Automated image focus, lighting, or framing check failed |
+| `quality_check -> queued` | System | Image quality check passed; case enters unassigned clinical review queue |
+| `needs_retake -> submitted` | Patient, Screener | Replacement oral photographs captured and uploaded (`POST /cases/{id}/images`) |
+| `queued -> ai_analyzed` | System | Locked PyTorch model runs inference; outputs predicted class, calibrated confidence, Grad-CAM heatmap |
+| `ai_analyzed -> under_review` | Doctor (Verified), System | Case claimed from unassigned pool (`POST /cases/{id}/claim`) or assigned by automatic capacity engine |
+| `under_review -> queued` | Doctor (Verified, Assigned) | Assigned doctor voluntarily releases case (`POST /cases/{id}/release`) with mandatory `reason_code` |
+| `under_review -> needs_retake` | Doctor (Verified, Assigned) | Assigned doctor requests retake (`POST /cases/{id}/retake`) with clinical feedback reason |
+| `under_review -> uncertain_needs_inperson` | Doctor (Verified, Assigned) | Lesion cannot be assessed remotely; flagged for mandatory in-person diagnostic evaluation |
+| `under_review -> signed` | Doctor (Verified, Assigned) | Review completed (AI confirmed/overridden); digitally signed with doctor registration number |
+| `signed -> closed_monitor` | Doctor (Verified, Assigned) | Assessment benign; case closed with routine re-screening reminder |
+| `signed -> referred` | Doctor (Verified, Assigned) | Case referred to hospital (`POST /referrals`); clinical referral packet generated |
+| `referred -> referral_pending` | System | Referral record routed to partner hospital coordinator inbox |
+| `referral_pending -> confirmed` | Hospital Coordinator | Coordinator accepts referral (`PATCH /referrals/{id}/status`) AND an appointment exists |
+| `referral_pending -> declined_by_hospital` | Hospital Coordinator | Coordinator declines referral (`PATCH /referrals/{id}/status`) with mandatory clinical decline reason |
+| `declined_by_hospital -> referred` | Doctor (Verified, Assigned) | Assigned doctor re-refers case to an alternate partner hospital facility |
+| `confirmed -> attended` | Hospital Coordinator | Coordinator records patient attendance at hospital clinic (`POST /appointments/{id}/attendance`) |
+| `confirmed -> no_show` | Hospital Coordinator | Patient fails to attend scheduled slot; coordinator marks no-show |
+| `no_show -> outreach` | System, Screener | Automated reminders and screener outreach follow-up initiated |
+| `outreach -> confirmed` | Hospital Coordinator | Patient re-contacted; appointment rescheduled and confirmed |
+| `outreach -> lost_to_followup` | System, Hospital Coordinator | Follow-up SLA expired after multiple unsuccessful contact attempts |
+| `attended -> outcome_recorded` | Hospital Coordinator | Histopathology biopsy confirmation and staging recorded (`POST /appointments/{id}/outcome`) |
+| `outcome_recorded -> closed` | System, Hospital Coordinator | Final clinical outcome documented; case lifecycle concluded |
+| Before `signed` -> `cancelled` | Patient (Owner), Screener (Creator) | Allowed strictly prior to `signed` from: `draft`, `submitted`, `quality_check`, `needs_retake`, `queued`, `ai_analyzed`, `under_review`, `uncertain_needs_inperson`. Attempting cancellation at or after `signed` returns `409 Conflict`. Doctors, coordinators, and admins cannot cancel cases |
+| Any state -> `consent_withdrawn` | Patient, Admin | Triggered by patient right to be forgotten (`DELETE /me/data`) or admin execution of screener erasure request (`POST /admin/patients/{id}/erase`). Clinical images and histories purged; active referrals marked `consent_withdrawn` |
 
 ## 5. Screening module
 
@@ -188,7 +227,7 @@ Every call screen shows an emergency banner and the doctor's registration number
 ## 14. Main API endpoints
 
 - Auth and consent: `POST /auth/register`, `POST /auth/login`, `POST /auth/2fa/login`, `POST /auth/2fa/setup`, `POST /auth/2fa/verify-setup`, `GET /auth/me`, `POST /auth/refresh`, `POST /auth/logout`, `GET /consent/current`, `POST /consent`, `DELETE /me/data`, `POST /patients/{id}/erasure-request`
-- Cases: `POST /cases`, `GET /cases`, `GET /cases/{id}`, `POST /cases/{id}/images`, `GET /cases/{id}/images/{image_id}`, `GET /cases/{id}/heatmap`, `POST /cases/{id}/history`, `POST /cases/{id}/submit`, `POST /cases/{id}/cancel`, `GET /queue`, `POST /cases/{id}/claim`, `POST /cases/{id}/release`, `POST /cases/{id}/retake`, `POST /cases/{id}/second-opinion`, `POST /cases/{id}/review`, `POST /cases/{id}/sign`, `GET /cases/{id}/timeline`, `GET /reports/{id}`
+- Cases: `POST /cases`, `GET /cases`, `GET /cases/{id}`, `POST /cases/{id}/images`, `GET /cases/{id}/images/{image_id}`, `GET /cases/{id}/heatmap`, `POST /cases/{id}/history`, `POST /cases/{id}/submit`, `POST /cases/{id}/cancel`, `GET /queue`, `POST /cases/{id}/claim`, `POST /cases/{id}/release`, `POST /cases/{id}/retake`, `POST /cases/{id}/second-opinion`, `POST /cases/{id}/review`, `POST /cases/{id}/sign`, `GET /cases/{id}/timeline`, `GET /cases/{id}/report`
 - AI: `POST /cases/{id}/analyze`, `GET /models/current`
 - Hospitals: `GET /hospitals/search`, `GET /hospitals/{id}/slots`, `POST /slots/{id}/hold`
 - Referrals and appointments: `POST /referrals`, `GET /referrals`, `GET /referrals/{id}`, `GET /referrals/{id}/packet`, `PATCH /referrals/{id}/status`, `POST /appointments`, `POST /appointments/{id}/confirm`, `POST /appointments/{id}/cancel`, `POST /appointments/{id}/reschedule-request`, `POST /appointments/{id}/attendance`, `POST /appointments/{id}/outcome`
