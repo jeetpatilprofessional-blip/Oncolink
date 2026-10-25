@@ -11,6 +11,7 @@ from app.api.deps import (
     get_client_ip,
     get_consent_service,
     get_current_settings,
+    get_current_user,
     get_db,
     get_totp_service,
 )
@@ -27,6 +28,7 @@ from app.models.token import (
 from app.models.user import (
     PatientRegisterRequest,
     UserInDB,
+    UserResponse,
     UserRole,
 )
 from app.services.audit_service import AuditService
@@ -603,3 +605,26 @@ async def logout(
             pass
 
     return {"message": "Logged out successfully"}
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(
+    current_user: Annotated[UserInDB, Depends(get_current_user)],
+) -> UserResponse:
+    """
+    Returns the authenticated user's profile: id, email, role,
+    verification status, and whether two-factor authentication is enrolled.
+    """
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        role=current_user.role,
+        is_active=current_user.is_active,
+        is_demo=current_user.is_demo,
+        created_at=current_user.created_at,
+        registration_number=current_user.registration_number,
+        verification_status=current_user.verification_status,
+        verified_by=current_user.verified_by,
+        verified_at=current_user.verified_at,
+        totp_enrolled=current_user.totp_enrolled,
+    )

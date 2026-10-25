@@ -1,9 +1,11 @@
 import React from "react";
 
 export type ButtonVariant = "primary" | "secondary" | "destructive";
+export type ButtonSize = "sm" | "md";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
+  size?: ButtonSize;
   children: React.ReactNode;
 }
 
@@ -12,18 +14,23 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
  * - Primary: gentian fill
  * - Secondary: ink outline
  * - Destructive: ink outline (never a red fill per DESIGN.md section 8)
- * - 44px minimum touch target, 4px corner radius, no arrows in labels.
+ * - 44px minimum touch target for md, 32px for sm (dense staff actions).
  */
 export const Button: React.FC<ButtonProps> = ({
   variant = "primary",
+  size = "md",
   children,
   className = "",
   disabled = false,
   type = "button",
   ...props
 }) => {
-  const baseStyles =
-    "inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-[4px] font-sans text-sm font-medium transition-colors cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-[#4B2E83] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+  const sizeStyles =
+    size === "sm"
+      ? "px-2.5 py-1 min-h-[32px] text-xs"
+      : "px-4 py-2 min-h-[44px] text-sm";
+
+  const baseStyles = `inline-flex items-center justify-center rounded-[4px] font-sans font-medium transition-colors cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-[#4B2E83] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${sizeStyles}`;
 
   let variantStyles = "";
   if (variant === "primary") {

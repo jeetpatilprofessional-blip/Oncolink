@@ -1,4 +1,5 @@
 import asyncio
+import getpass
 import os
 import sys
 from datetime import UTC, datetime
@@ -169,17 +170,100 @@ async def seed_demo_users() -> None:
     print("Demo user seeding completed successfully.")
 
 
+async def create_admin(email: str, password: str | None = None) -> None:
+    """
+    Creates a production-ready, real administrator account.
+    Enforces password complexity, email uniqueness, sets is_demo=False,
+    requires TOTP enrollment on first login, and writes an immutable audit record.
+    """
+    normalized_email = email.strip().lower()
+    if not normalized_email or "@" not in normalized_email:
+        print("ERROR: A valid email address is required.")
+        sys.exit(1)
+
+    # Read password from hidden prompt if not provided
+    if not password:
+        password = getpass.getpass(f"Enter password for admin ({normalized_email}): ")
+
+    settings = get_settings()
+    client = await init_db(settings)
+    db = client[settings.mongo_db_name]
+    audit_service = AuditService(db)
+    auth_service = AuthService(db, settings, audit_service)
+
+    # Validate password rules
+    try:
+        auth_service.validate_password_strength(password, normalized_email)
+    except ValueError as err:
+        print(f"ERROR: {err}")
+        await close_db()
+        sys.exit(1)
+
+    # Check uniqueness
+    existing = await db["users"].find_one({"email": normalized_email})
+    if existing:
+        print(f"ERROR: An account with email '{normalized_email}' already exists.")
+        await close_db()
+        sys.exit(1)
+
+    password_hash = auth_service.hash_password(password)
+    now = datetime.now(UTC)
+
+    admin_doc = {
+        "email": normalized_email,
+        "password_hash": password_hash,
+        "role": UserRole.ADMIN.value,
+        "is_active": True,
+        "is_demo": False,
+        "created_at": now,
+        "failed_login_attempts": 0,
+        "locked_until": None,
+        "totp_enrolled": False,
+        "totp_secret_encrypted": None,
+        "totp_recovery_codes_hashes": [],
+    }
+
+    result = await db["users"].insert_one(admin_doc)
+    user_id = str(result.inserted_id)
+
+    await audit_service.insert(
+        event_type=AuditEventType.USER_CREATION,
+        actor_id="cli_create_admin",
+        actor_role="admin",
+        target_user_id=user_id,
+        details={
+            "email": normalized_email,
+            "role": UserRole.ADMIN.value,
+            "is_demo": False,
+            "method": "cli_create_admin",
+        },
+    )
+
+    await close_db()
+    print(f"Admin account '{normalized_email}' created successfully.")
+
+
 def main() -> None:
     """CLI dispatcher."""
     if len(sys.argv) < 2:
-        print("Usage: python -m app.cli [seed-demo-users]")
+        print("Usage: python -m app.cli [seed-demo-users | create-admin <email>]")
         sys.exit(1)
 
     command = sys.argv[1].lower()
     if command == "seed-demo-users":
         asyncio.run(seed_demo_users())
+    elif command == "create-admin":
+        if len(sys.argv) < 3:
+            print("ERROR: create-admin requires an email argument.")
+            print("Usage: python -m app.cli create-admin <email> [--password <password>]")
+            sys.exit(1)
+        email = sys.argv[2]
+        password = None
+        if len(sys.argv) >= 5 and sys.argv[3] == "--password":
+            password = sys.argv[4]
+        asyncio.run(create_admin(email, password))
     else:
-        print(f"Unknown command: '{command}'. Available commands: seed-demo-users")
+        print(f"Unknown command: '{command}'. Available commands: seed-demo-users, create-admin")
         sys.exit(1)
 
 

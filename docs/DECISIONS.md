@@ -67,3 +67,14 @@ This document records authoritative technical and architectural decisions for th
 
 * **Decision:** Patient self-registration requires explicit acceptance of the current active versioned consent text. The backend verifies the submitted version against the current file-backed text, records an immutable consent record in `consents` with the canonical text SHA-256 hash, and exposes `GET /consent/current` publicly.
 * **Rationale:** In an academic research prototype involving human oral photography, participant autonomy and compliance with ethical standards require that consent is fully verifiable, version-tracked, and retrievable in plain language without ambiguity.
+
+
+## Decision 12: In-Memory Access Tokens & Zero Web Storage Persistence
+
+* **Decision:** The JWT access token resides strictly in JavaScript application memory (`frontend/src/api/client.ts`), never written to `localStorage`, `sessionStorage`, or any JavaScript-readable cookie. Session persistence and renewal are handled via an `httpOnly`, `SameSite=Strict` refresh cookie using a single-flight mutex (`performSingleFlightRefresh`). When an API request encounters a 401, concurrent requests await the in-flight refresh promise and retry once upon success. If refresh fails, in-memory state is cleared and the user is redirected to `/login`.
+* **Rationale:** Web storage (`localStorage`/`sessionStorage`) is vulnerable to cross-site scripting (XSS) extraction. Keeping access tokens exclusively in memory while delegating persistence to `httpOnly` SameSite=Strict cookies ensures sensitive clinical credentials cannot be read by malicious scripts. Single-flight queuing prevents race conditions and redundant refresh operations under parallel requests.
+
+## Decision 13: Local Client-Side QR Code Generation for Two-Factor Enrollment
+
+* **Decision:** TOTP setup QR codes are generated directly in the browser as pure SVG markup using the client-side `qrcode` library. Secrets, email addresses, and `otpauth://` URIs are never sent to external chart services or third-party image generation APIs.
+* **Rationale:** Using third-party image generation services (e.g., Google Chart API) leaks cryptographic 2FA seeds and user identities over external networks. Generating SVGs client-side maintains complete data sovereignty and ensures high security in hospital networks.

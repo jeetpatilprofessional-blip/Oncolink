@@ -256,3 +256,49 @@ async def test_immediate_rejection_upon_deactivation(
             auth_service=auth_service,
         )
     assert "inactive" in str(excinfo.value.detail).lower()
+
+
+@pytest.mark.asyncio
+async def test_auth_me_endpoint(async_client: AsyncClient, test_mongo_client: AsyncIOMotorClient, test_settings: Settings):
+    """GET /auth/me returns current user profile when authenticated; returns 401 when unauthenticated."""
+    # 1. Unauthenticated gets 401
+    unauth = await async_client.get("/auth/me")
+    assert unauth.status_code == 401
+
+    # 2. Authenticated user receives profile
+    reg_res = await async_client.post(
+        "/auth/register",
+        json={
+            "email": "me_test@example.com",
+            "password": "ValidPassword123!",
+            "consent_version": "v1",
+            "consent_accepted": True,
+        },
+    )
+    assert reg_res.status_code == 201
+    token = reg_res.json()["access_token"]
+    user_id = reg_res.json()["user_id"]
+
+    me_res = await async_client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert me_res.status_code == 200
+    me_data = me_res.json()
+    assert me_data["id"] == user_id
+    assert me_data["email"] == "me_test@example.com"
+    assert me_data["role"] == "patient"
+    assert me_data["is_active"] is True
+    assert me_data["is_demo"] is False
+    assert me_data["totp_enrolled"] is False
+
+
+@pytest.mark.asyncio
+async def test_cors_exact_origin(async_client: AsyncClient):
+    """CORS middleware returns allow-credentials and exact origin from environment."""
+    res = await async_client.get(
+        "/health",
+        headers={"Origin": "http://127.0.0.1:5173"},
+    )
+    assert res.headers.get("access-control-allow-origin") == "http://127.0.0.1:5173"
+    assert res.headers.get("access-control-allow-credentials") == "true"

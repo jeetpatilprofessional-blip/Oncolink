@@ -58,12 +58,24 @@ Generate strong random secrets before deployment using the following commands:
 - **Five Roles:** `patient`, `screener`, `doctor`, `hospital_coordinator`, `admin`.
 - **Registration:** Patients self-register with explicit acceptance of the current active informed consent version (`POST /auth/register`). Staff roles (`screener`, `doctor`, `hospital_coordinator`, `admin`) are provisioned exclusively by administrators (`POST /admin/users`).
 - **Passwords:** Hashed with Argon2id. Minimum length of 10 characters, strictly prohibited from matching the email address.
-- **Sessions:** Short-lived 15-minute access JWTs. Opaque refresh tokens stored only as SHA-256 hashes, rotated on every refresh, delivered via `httpOnly`, `SameSite=Strict` cookies.
+- **In-Memory Access Tokens:** The frontend holds access JWTs exclusively in JavaScript memory (`frontend/src/api/client.ts`), never persisting them to `localStorage`, `sessionStorage`, or readable cookies.
+- **Sessions & Rotation:** Short-lived 15-minute access JWTs. Opaque refresh tokens stored only as SHA-256 hashes, rotated on every refresh, delivered via `httpOnly`, `SameSite=Strict` cookies.
+- **Single-Flight Refresh Mutex:** When a 401 response occurs, concurrent frontend requests wait for a single in-flight refresh request (`POST /auth/refresh`) and retry once with the new access token.
 - **Reuse Detection:** Replaying an already rotated refresh token triggers automatic revocation of the entire token family and logs a `refresh_reuse` security audit event.
 - **Account Lockout:** 5 consecutive failed login attempts trigger an automatic 15-minute lockout against the target account. Unknown emails and invalid passwords return an identical generic error.
-- **Two-Factor Authentication (TOTP):** Mandatory for `doctor` and `admin` roles. TOTP secrets are encrypted at rest with Fernet. Enrolment issues 8 single-use recovery codes stored as SHA-256 hashes.
+- **Two-Factor Authentication (TOTP):** Mandatory for `doctor` and `admin` roles. TOTP secrets are encrypted at rest with Fernet. Enrolment issues 8 single-use recovery codes stored as SHA-256 hashes. QR codes are generated client-side via `qrcode` SVG without external API calls.
 - **Doctor Verification Guard:** Clinical sign-off endpoints enforce `require_verified_doctor`, rejecting doctors whose status is `pending` or `rejected`.
 - **Immutable Audit Trail:** All auth lifecycle events (`login_success`, `login_failure`, `lockout`, `logout`, `refresh_reuse`, `totp_enrollment`, `user_creation`, `verification_changes`, `deactivation`) append to the `audit_log` collection via `AuditService` (which purposefully exposes zero update or delete methods).
+
+---
+
+## Administrator Account Provisioning
+
+To create a real (non-demo) production administrator account:
+```powershell
+docker compose exec -T backend python -m app.cli create-admin admin@hospital.org
+```
+*(The command prompts for a hidden password, enforces password complexity rules, rejects duplicate emails, marks the account as non-demo `is_demo: false`, mandates TOTP setup on first sign-in, and writes an immutable audit record).*
 
 ---
 
@@ -93,7 +105,16 @@ docker compose up -d
 
 ### Access Points
 - **Frontend App:** http://127.0.0.1:5173
-- **Dev Component Gallery:** http://127.0.0.1:5173/dev/components
+  - `/login`: 2-step clinical authentication (password then TOTP or recovery code)
+  - `/register`: Patient self-registration with versioned research consent agreement
+  - `/2fa/setup`: Authenticator app enrollment with local SVG QR code, secret key, and 8 recovery codes
+  - `/admin`: User directory, staff provisioning, doctor credential verification, and account deactivation
+  - `/patient`: Patient screening records portal
+  - `/screener`: Community health worker screening queue
+  - `/doctor`: Clinical review workspace
+  - `/coordinator`: Hospital referral management
+  - `/forbidden`: Role access boundary warning
+  - `/dev/components`: Living Design System Component Gallery
 - **Minimal Health Check (Public):** http://127.0.0.1:8000/health
 - **Diagnostic Details (Admin Only):** http://127.0.0.1:8000/health/details
 - **Current Informed Consent (Public):** http://127.0.0.1:8000/consent/current
@@ -126,13 +147,13 @@ npm run test
 ```powershell
 npm run test:backend
 ```
-*(Executes 30 test cases in pytest covering role cross-matrix enforcement, unauthenticated rejection, argon2 hashing, refresh rotation & reuse detection, account lockout, TOTP enrollment/login, recovery codes, consent verification, and AuditService immutability).*
+*(Executes 33 test cases in pytest covering role cross-matrix enforcement, `GET /auth/me`, CORS headers, unauthenticated rejection, argon2 hashing, refresh rotation & reuse detection, account lockout, TOTP enrollment/login, recovery codes, consent verification, and AuditService immutability).*
 
 ### Run Frontend Tests Only
 ```powershell
 npm run test:frontend
 ```
-*(Executes 17 vitest test cases covering color contrast math, StatusMarker dual-coding, accessible form fields, keyboard sortable tables, and axe-core zero-violation audits).*
+*(Executes 34 vitest test cases covering login 2-step flow, patient consent requirement, in-memory token security, single-flight refresh under parallel 401s, 2FA setup recovery codes confirmation, role route redirects, and axe-core zero-violation audits across all screens).*
 
 ---
 

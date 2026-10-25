@@ -35,13 +35,14 @@ export const HealthPage: React.FC = () => {
     setError(null);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-      const res = await fetch(`${apiUrl}/health`);
+      // Fetch health details endpoint which includes subsystem status
+      const res = await fetch(`${apiUrl}/health/details`).catch(() => fetch(`${apiUrl}/health`));
       if (!res.ok) {
         throw new Error(`HTTP ${res.status} ${res.statusText}`);
       }
       const data: HealthResponse = await res.json();
       setHealth(data);
-      const date = new Date(data.timestamp);
+      const date = data.timestamp ? new Date(data.timestamp) : new Date();
       const hours = String(date.getHours()).padStart(2, "0");
       const minutes = String(date.getMinutes()).padStart(2, "0");
       setLastCheckedTime(`${hours}:${minutes}`);
@@ -56,24 +57,33 @@ export const HealthPage: React.FC = () => {
     void fetchHealth();
   }, []);
 
-  const serviceRows: ServiceRow[] = health
+  const serviceRows: ServiceRow[] = health?.services
     ? [
         {
           name: "MongoDB Database",
-          status: health.services.mongodb.status === "connected" ? "routine" : "urgent",
-          statusText: String(health.services.mongodb.status),
-          details: `Replica Set: ${String(health.services.mongodb.replica_set ?? "rs0")}`,
+          status: health.services.mongodb?.status === "connected" ? "routine" : "urgent",
+          statusText: String(health.services.mongodb?.status ?? "unknown"),
+          details: `Replica Set: ${String(health.services.mongodb?.replica_set ?? "rs0")}`,
         },
         {
           name: "GridFS Storage",
-          status: health.services.gridfs.status === "connected" ? "routine" : "urgent",
-          statusText: String(health.services.gridfs.status),
-          details: `Bucket: ${String(health.services.gridfs.bucket ?? "case_images")}, File count: ${String(
-            health.services.gridfs.file_count ?? "0"
+          status: health.services.gridfs?.status === "connected" ? "routine" : "urgent",
+          statusText: String(health.services.gridfs?.status ?? "unknown"),
+          details: `Bucket: ${String(health.services.gridfs?.bucket ?? "case_images")}, File count: ${String(
+            health.services.gridfs?.file_count ?? "0"
           )}`,
         },
       ]
-    : [];
+    : health
+      ? [
+          {
+            name: "Backend Service",
+            status: health.status === "healthy" ? "routine" : "urgent",
+            statusText: String(health.status),
+            details: "API operational",
+          },
+        ]
+      : [];
 
   const columns: Column<ServiceRow>[] = [
     { key: "name", header: t("table.service"), sortable: true },
