@@ -138,7 +138,63 @@ Probing non-lesion visual signals across the 5 folds:
 
 ---
 
-## 7. How to Reproduce (PowerShell)
+## 7. Controlled Transfer-Learning Experiments (Prompt 5c / Decision 21)
+
+Authorized under **Decision 21**, three controlled transfer-learning arms were trained and evaluated across the 259-image development pool using 5-fold cross-validation, with the 64-image internal test set and 103-image Kaggle external set strictly quarantined:
+
+* **Arm 1 (Standard Transfer Learning):** Pretrained EfficientNet-B0 with standard data augmentation (horizontal flip).
+* **Arm 2 (Shortcut-Regularized):** Pretrained EfficientNet-B0 with aggressive Colour Jitter ($\pm 0.3$), Random Resized Crop ($0.7 \text{ to } 1.0$), and Rotation ($\pm 15^\circ$).
+* **Arm 3 (Background-Suppression):** Pretrained EfficientNet-B0 trained with peripheral border masking ($p=0.7$, 15% outer border masked) to disrupt background reliance.
+
+### 7.1 Cross-Validated Performance, Calibration, & Shortcut Probes (N = 259)
+
+| Metric | Baseline (Frozen EffNet) | Arm 1 (Standard Transfer) | Arm 2 (Shortcut-Regularized) | Arm 3 (Background-Suppression) |
+|---|---|---|---|---|
+| **Full Image AUC (95% CI)** | 0.8717 [0.8241, 0.9092] | **0.8775 [0.8307, 0.9131]** | **0.8713 [0.8229, 0.9119]** | **0.8988 [0.8588, 0.9323]** |
+| **Precision-Recall AUC** | 0.8654 | **0.8726** | **0.8651** | **0.8942** |
+| **Sensitivity at 0.5** | 0.7953 | 0.8425 | 0.8425 | 0.8425 |
+| **Specificity at 0.5** | 0.7879 | 0.7652 | 0.8030 | 0.8106 |
+| **Balanced Accuracy at 0.5** | 0.7916 | 0.8038 | 0.8228 | 0.8266 |
+| **Brier Score (Raw $\rightarrow$ Calibrated)** | N/A | 0.1430 $\rightarrow$ 0.1430 | 0.1444 $\rightarrow$ 0.1434 | 0.1332 $\rightarrow$ 0.1296 |
+| **ECE (Raw $\rightarrow$ Calibrated)** | N/A | 0.0389 $\rightarrow$ **0.0369** | 0.0369 $\rightarrow$ **0.0303** | 0.0500 $\rightarrow$ **0.0414** |
+| **Triage Threshold ($\text{Sens} \ge 85\%$)** | N/A | $\tau^* = 0.4892$<br>(Sens 0.8504, Spec 0.7576) | $\tau^* = 0.5298$<br>(Sens 0.8504, Spec 0.7879) | $\tau^* = 0.4605$<br>(Sens 0.8504, Spec 0.7727) |
+| **Border-Only Probe AUC (Centre Masked)** | **0.8338 [0.7780, 0.8827]** | **0.7696 [0.7129, 0.8277]** | **0.8219 [0.7677, 0.8675]** | **0.8453 [0.7951, 0.8884]** |
+| **Centre-Crop Probe AUC (Lesion Only)** | **0.8428 [0.7911, 0.8873]** | **0.7686 [0.7078, 0.8268]** | **0.8005 [0.7427, 0.8524]** | **0.8487 [0.8008, 0.8906]** |
+
+> [!CAUTION]
+> **CRITICAL SHORTCUT SURVIVAL FINDING**
+> 1. In all three arms, the model achieves **AUC between 0.7696 and 0.8453 on pure background borders with the lesion completely blacked out**.
+> 2. Augmentations (Arm 2) and border masking (Arm 3) slightly improved full-image AUC (0.8713 to 0.8988) and calibration (ECE 0.0303), but **failed to eliminate the background shortcut**.
+> 3. The dataset's pervasive acquisition differences (ambient illumination, device sensor characteristics, camera flash geometry, and oral tissue retraction depth) remain deeply entangled with diagnostic labels.
+
+---
+
+## 8. How to Reproduce (PowerShell)
+
+All commands are executed inside the Docker container:
+
+```powershell
+# 1. Build the ML container
+docker compose --profile ml build ml
+
+# 2. Build manifest, process Kaggle exclusions, and run dual-pass duplicate grouping
+docker compose --profile ml run --rm ml python ml/scripts/build_manifest.py
+
+# 3. Generate stratified group-aware splits and run authoritative leakage checks
+docker compose --profile ml run --rm ml python ml/scripts/make_splits.py
+
+# 4. Evaluate majority class, metadata, and frozen EfficientNet baselines
+docker compose --profile ml run --rm ml python ml/scripts/baselines.py
+
+# 5. Run dataset shortcut analysis and single-feature probes
+docker compose --profile ml run --rm ml python ml/scripts/analyze_shortcuts.py
+
+# 6. Run controlled transfer-learning experiments (Decision 21)
+docker compose --profile ml run --rm ml python ml/scripts/train_experiments.py
+
+# 7. Run complete automated unit test suite (15 tests)
+docker compose --profile ml run --rm ml pytest ml/tests -v
+```
 
 All commands are executed inside the Docker container:
 

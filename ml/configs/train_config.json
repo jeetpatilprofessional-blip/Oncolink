@@ -1,0 +1,61 @@
+{
+  "project": "OncoLink",
+  "experiment": "Prompt 5c - Controlled Transfer Learning & Shortcut Mitigation",
+  "decision_reference": "Decision 21",
+  "seed": 42,
+  "architecture": "efficientnet_b0",
+  "weights": "models.EfficientNet_B0_Weights.DEFAULT",
+  "weights_sha256": "7f5810bc96def8f7552d5b7e68d53c4786f81167d28291b21c0d90e1fca14934",
+  "dataset": {
+    "source": "mendeley_karnataka (original data)",
+    "total_images": 259,
+    "folds": 5,
+    "held_out_internal_test_size": 64,
+    "held_out_quarantined_external_size": 103,
+    "quarantine_status": "STRICTLY_LOCKED_AND_UNTOUCHED"
+  },
+  "training": {
+    "device": "cpu",
+    "batch_size": 16,
+    "epochs": 15,
+    "optimizer": "AdamW",
+    "learning_rate": 0.0001,
+    "weight_decay": 0.01,
+    "scheduler": "CosineAnnealingLR",
+    "criterion": "CrossEntropyLoss",
+    "checkpoint_selection": "min_validation_loss"
+  },
+  "arms": {
+    "arm_1_standard": {
+      "description": "Standard transfer learning with minimal augmentation (RandomHorizontalFlip)",
+      "transforms": ["Standardise(224x224, Q=90)", "RandomHorizontalFlip(p=0.5)", "Normalize(ImageNet)"]
+    },
+    "arm_2_shortcut_regularized": {
+      "description": "Shortcut-regularized transfer learning with colour jitter, scale variation, and rotation",
+      "transforms": [
+        "Standardise(224x224, Q=90)",
+        "RandomResizedCrop(224, scale=(0.7, 1.0))",
+        "RandomHorizontalFlip(p=0.5)",
+        "RandomVerticalFlip(p=0.2)",
+        "RandomRotation(degrees=15)",
+        "ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1)",
+        "Normalize(ImageNet)"
+      ]
+    },
+    "arm_3_background_suppression": {
+      "description": "Background-suppression training with random peripheral border masking",
+      "transforms": [
+        "Standardise(224x224, Q=90)",
+        "RandomBorderMasking(p=0.7, border_fraction=0.15)",
+        "RandomHorizontalFlip(p=0.5)",
+        "ColorJitter(brightness=0.2, contrast=0.2)",
+        "Normalize(ImageNet)"
+      ]
+    }
+  },
+  "calibration": {
+    "method": "Platt Scaling (Out-of-fold univariate logistic regression on logits)",
+    "ece_bins": 5,
+    "binning_strategy": "quantile"
+  }
+}

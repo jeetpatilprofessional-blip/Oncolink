@@ -1,0 +1,521 @@
+{
+  "arm_1_standard": {
+    "folds": [
+      {
+        "fold": 0,
+        "val_auc": 0.8585,
+        "val_border_auc": 0.76,
+        "val_centre_auc": 0.7862
+      },
+      {
+        "fold": 1,
+        "val_auc": 0.872,
+        "val_border_auc": 0.8672,
+        "val_centre_auc": 0.7456
+      },
+      {
+        "fold": 2,
+        "val_auc": 0.8922,
+        "val_border_auc": 0.7687,
+        "val_centre_auc": 0.8118
+      },
+      {
+        "fold": 3,
+        "val_auc": 0.9017,
+        "val_border_auc": 0.8105,
+        "val_centre_auc": 0.7137
+      },
+      {
+        "fold": 4,
+        "val_auc": 0.8667,
+        "val_border_auc": 0.7674,
+        "val_centre_auc": 0.7659
+      }
+    ],
+    "full_image": {
+      "auc": {
+        "point": 0.8775,
+        "ci_95": [
+          0.8307,
+          0.9131
+        ]
+      },
+      "pr_auc": 0.8726,
+      "sensitivity": {
+        "point": 0.8425,
+        "ci_95": [
+          0.7721,
+          0.9
+        ]
+      },
+      "specificity": {
+        "point": 0.7652,
+        "ci_95": [
+          0.6875,
+          0.8333
+        ]
+      },
+      "metrics_at_0_5": {
+        "confusion_matrix": {
+          "tn": 101,
+          "fp": 31,
+          "fn": 20,
+          "tp": 107
+        },
+        "precision": 0.7754,
+        "recall_sensitivity": 0.8425,
+        "specificity": 0.7652,
+        "f1": 0.8075,
+        "balanced_accuracy": 0.8038
+      },
+      "triage_operating_threshold": {
+        "threshold": 0.4892,
+        "target_criterion": "sensitivity >= 0.85 on development pool",
+        "confusion_matrix": {
+          "tn": 100,
+          "fp": 32,
+          "fn": 19,
+          "tp": 108
+        },
+        "precision": 0.7714,
+        "sensitivity": 0.8504,
+        "specificity": 0.7576,
+        "f1": 0.809,
+        "balanced_accuracy": 0.804
+      }
+    },
+    "calibration": {
+      "brier_score_raw": 0.143,
+      "brier_score_calibrated": 0.143,
+      "log_loss_raw": 0.4401,
+      "log_loss_calibrated": 0.44,
+      "ece_raw": 0.0389,
+      "ece_calibrated": 0.0369,
+      "bins_calibrated": [
+        {
+          "bin": 0,
+          "range": [
+            0.0,
+            0.1008
+          ],
+          "count": 52,
+          "mean_confidence": 0.0443,
+          "accuracy": 0.0192,
+          "gap": 0.025
+        },
+        {
+          "bin": 1,
+          "range": [
+            0.1008,
+            0.3495
+          ],
+          "count": 52,
+          "mean_confidence": 0.2168,
+          "accuracy": 0.25,
+          "gap": 0.0332
+        },
+        {
+          "bin": 2,
+          "range": [
+            0.3495,
+            0.6629
+          ],
+          "count": 51,
+          "mean_confidence": 0.5506,
+          "accuracy": 0.549,
+          "gap": 0.0016
+        },
+        {
+          "bin": 3,
+          "range": [
+            0.6629,
+            0.8142
+          ],
+          "count": 52,
+          "mean_confidence": 0.7383,
+          "accuracy": 0.6731,
+          "gap": 0.0652
+        },
+        {
+          "bin": 4,
+          "range": [
+            0.8142,
+            1.0
+          ],
+          "count": 52,
+          "mean_confidence": 0.903,
+          "accuracy": 0.9615,
+          "gap": 0.0586
+        }
+      ]
+    },
+    "shortcut_probes": {
+      "border_only_masked_centre": {
+        "description": "Centre 60% masked to black; peripheral background only",
+        "auc": {
+          "point": 0.7696,
+          "ci_95": [
+            0.7129,
+            0.8277
+          ]
+        }
+      },
+      "centre_only_crop": {
+        "description": "Centre 60% crop resized to 224x224; lesion region only",
+        "auc": {
+          "point": 0.7686,
+          "ci_95": [
+            0.7078,
+            0.8268
+          ]
+        }
+      }
+    }
+  },
+  "arm_2_shortcut_regularized": {
+    "folds": [
+      {
+        "fold": 0,
+        "val_auc": 0.8415,
+        "val_border_auc": 0.7477,
+        "val_centre_auc": 0.7769
+      },
+      {
+        "fold": 1,
+        "val_auc": 0.9056,
+        "val_border_auc": 0.8848,
+        "val_centre_auc": 0.7968
+      },
+      {
+        "fold": 2,
+        "val_auc": 0.8678,
+        "val_border_auc": 0.8218,
+        "val_centre_auc": 0.8391
+      },
+      {
+        "fold": 3,
+        "val_auc": 0.9031,
+        "val_border_auc": 0.8761,
+        "val_centre_auc": 0.802
+      },
+      {
+        "fold": 4,
+        "val_auc": 0.8726,
+        "val_border_auc": 0.8326,
+        "val_centre_auc": 0.7778
+      }
+    ],
+    "full_image": {
+      "auc": {
+        "point": 0.8713,
+        "ci_95": [
+          0.8229,
+          0.9119
+        ]
+      },
+      "pr_auc": 0.8478,
+      "sensitivity": {
+        "point": 0.8661,
+        "ci_95": [
+          0.7949,
+          0.9225
+        ]
+      },
+      "specificity": {
+        "point": 0.7652,
+        "ci_95": [
+          0.6857,
+          0.8346
+        ]
+      },
+      "metrics_at_0_5": {
+        "confusion_matrix": {
+          "tn": 101,
+          "fp": 31,
+          "fn": 17,
+          "tp": 110
+        },
+        "precision": 0.7801,
+        "recall_sensitivity": 0.8661,
+        "specificity": 0.7652,
+        "f1": 0.8209,
+        "balanced_accuracy": 0.8156
+      },
+      "triage_operating_threshold": {
+        "threshold": 0.5298,
+        "target_criterion": "sensitivity >= 0.85 on development pool",
+        "confusion_matrix": {
+          "tn": 104,
+          "fp": 28,
+          "fn": 19,
+          "tp": 108
+        },
+        "precision": 0.7941,
+        "sensitivity": 0.8504,
+        "specificity": 0.7879,
+        "f1": 0.8213,
+        "balanced_accuracy": 0.8191
+      }
+    },
+    "calibration": {
+      "brier_score_raw": 0.1444,
+      "brier_score_calibrated": 0.1434,
+      "log_loss_raw": 0.4532,
+      "log_loss_calibrated": 0.4506,
+      "ece_raw": 0.0369,
+      "ece_calibrated": 0.0303,
+      "bins_calibrated": [
+        {
+          "bin": 0,
+          "range": [
+            0.0,
+            0.1044
+          ],
+          "count": 52,
+          "mean_confidence": 0.0481,
+          "accuracy": 0.0769,
+          "gap": 0.0288
+        },
+        {
+          "bin": 1,
+          "range": [
+            0.1044,
+            0.402
+          ],
+          "count": 52,
+          "mean_confidence": 0.2247,
+          "accuracy": 0.1923,
+          "gap": 0.0324
+        },
+        {
+          "bin": 2,
+          "range": [
+            0.402,
+            0.681
+          ],
+          "count": 51,
+          "mean_confidence": 0.5538,
+          "accuracy": 0.5098,
+          "gap": 0.044
+        },
+        {
+          "bin": 3,
+          "range": [
+            0.681,
+            0.7973
+          ],
+          "count": 52,
+          "mean_confidence": 0.741,
+          "accuracy": 0.75,
+          "gap": 0.009
+        },
+        {
+          "bin": 4,
+          "range": [
+            0.7973,
+            1.0
+          ],
+          "count": 52,
+          "mean_confidence": 0.8853,
+          "accuracy": 0.9231,
+          "gap": 0.0377
+        }
+      ]
+    },
+    "shortcut_probes": {
+      "border_only_masked_centre": {
+        "description": "Centre 60% masked to black; peripheral background only",
+        "auc": {
+          "point": 0.8219,
+          "ci_95": [
+            0.7677,
+            0.8675
+          ]
+        }
+      },
+      "centre_only_crop": {
+        "description": "Centre 60% crop resized to 224x224; lesion region only",
+        "auc": {
+          "point": 0.8005,
+          "ci_95": [
+            0.7427,
+            0.8524
+          ]
+        }
+      }
+    }
+  },
+  "arm_3_background_suppression": {
+    "folds": [
+      {
+        "fold": 0,
+        "val_auc": 0.8262,
+        "val_border_auc": 0.7015,
+        "val_centre_auc": 0.8462
+      },
+      {
+        "fold": 1,
+        "val_auc": 0.9344,
+        "val_border_auc": 0.872,
+        "val_centre_auc": 0.8096
+      },
+      {
+        "fold": 2,
+        "val_auc": 0.8908,
+        "val_border_auc": 0.8836,
+        "val_centre_auc": 0.8664
+      },
+      {
+        "fold": 3,
+        "val_auc": 0.953,
+        "val_border_auc": 0.9501,
+        "val_centre_auc": 0.8447
+      },
+      {
+        "fold": 4,
+        "val_auc": 0.9156,
+        "val_border_auc": 0.843,
+        "val_centre_auc": 0.8785
+      }
+    ],
+    "full_image": {
+      "auc": {
+        "point": 0.8988,
+        "ci_95": [
+          0.8588,
+          0.9323
+        ]
+      },
+      "pr_auc": 0.9002,
+      "sensitivity": {
+        "point": 0.8031,
+        "ci_95": [
+          0.728,
+          0.8686
+        ]
+      },
+      "specificity": {
+        "point": 0.7955,
+        "ci_95": [
+          0.7231,
+          0.8651
+        ]
+      },
+      "metrics_at_0_5": {
+        "confusion_matrix": {
+          "tn": 105,
+          "fp": 27,
+          "fn": 25,
+          "tp": 102
+        },
+        "precision": 0.7907,
+        "recall_sensitivity": 0.8031,
+        "specificity": 0.7955,
+        "f1": 0.7969,
+        "balanced_accuracy": 0.7993
+      },
+      "triage_operating_threshold": {
+        "threshold": 0.4605,
+        "target_criterion": "sensitivity >= 0.85 on development pool",
+        "confusion_matrix": {
+          "tn": 102,
+          "fp": 30,
+          "fn": 19,
+          "tp": 108
+        },
+        "precision": 0.7826,
+        "sensitivity": 0.8504,
+        "specificity": 0.7727,
+        "f1": 0.8151,
+        "balanced_accuracy": 0.8116
+      }
+    },
+    "calibration": {
+      "brier_score_raw": 0.1332,
+      "brier_score_calibrated": 0.1296,
+      "log_loss_raw": 0.4154,
+      "log_loss_calibrated": 0.4032,
+      "ece_raw": 0.05,
+      "ece_calibrated": 0.0414,
+      "bins_calibrated": [
+        {
+          "bin": 0,
+          "range": [
+            0.0,
+            0.0712
+          ],
+          "count": 52,
+          "mean_confidence": 0.0292,
+          "accuracy": 0.0577,
+          "gap": 0.0285
+        },
+        {
+          "bin": 1,
+          "range": [
+            0.0712,
+            0.3691
+          ],
+          "count": 52,
+          "mean_confidence": 0.2107,
+          "accuracy": 0.1538,
+          "gap": 0.0569
+        },
+        {
+          "bin": 2,
+          "range": [
+            0.3691,
+            0.6483
+          ],
+          "count": 51,
+          "mean_confidence": 0.5055,
+          "accuracy": 0.549,
+          "gap": 0.0435
+        },
+        {
+          "bin": 3,
+          "range": [
+            0.6483,
+            0.8636
+          ],
+          "count": 52,
+          "mean_confidence": 0.7772,
+          "accuracy": 0.7308,
+          "gap": 0.0464
+        },
+        {
+          "bin": 4,
+          "range": [
+            0.8636,
+            1.0
+          ],
+          "count": 52,
+          "mean_confidence": 0.9296,
+          "accuracy": 0.9615,
+          "gap": 0.0319
+        }
+      ]
+    },
+    "shortcut_probes": {
+      "border_only_masked_centre": {
+        "description": "Centre 60% masked to black; peripheral background only",
+        "auc": {
+          "point": 0.8453,
+          "ci_95": [
+            0.7951,
+            0.8884
+          ]
+        }
+      },
+      "centre_only_crop": {
+        "description": "Centre 60% crop resized to 224x224; lesion region only",
+        "auc": {
+          "point": 0.8487,
+          "ci_95": [
+            0.8008,
+            0.8906
+          ]
+        }
+      }
+    }
+  }
+}

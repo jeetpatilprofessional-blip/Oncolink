@@ -176,6 +176,19 @@ This document records authoritative technical and architectural decisions for th
      - Any future convolutional or transformer model trained on this dataset will exploit these non-lesion background shortcuts unless aggressively regularized (colour jitter, strong spatial augmentations, outside-domain transfer).
   5. **Limitation Caveat:** All findings remain limited by the total absence of patient identifiers in the source dataset (Decision 17). Even though whole duplicate groups were preserved, cross-validation metrics may remain optimistic due to unlabelled patient overlap across remaining images.
 
+## Decision 21: Authorized Controlled Transfer-Learning Experiment & Shortcut Evaluation
+
+* **Decision:**
+  1. **Explicit Training Authorization:** The user explicitly authorized the controlled transfer-learning experiment on the 259-image development pool across the existing 5-fold cross-validation protocol (`splits.json`).
+  2. **Quarantine Invariant:** The 64-image held-out internal test set and 103-image Kaggle external dataset remain strictly quarantined and are never accessed during training, tuning, calibration, or model selection.
+  3. **Prohibition of Scratch Training:** Scratch training is formally rejected due to severe sample size constraints ($N = 259$); all experiments utilize transfer learning from pretrained EfficientNet-B0 (`models.EfficientNet_B0_Weights.DEFAULT`).
+  4. **Three Controlled Experimental Arms:**
+     - **Arm 1 (Standard Transfer Learning):** Fine-tuning the classification head on standardised 224x224 images with standard augmentation (random horizontal flip).
+     - **Arm 2 (Shortcut-Regularized Transfer Learning):** Training with clinically defensible augmentations designed to disrupt background shortcuts: aggressive Colour Jitter (brightness $\pm 0.3$, contrast $\pm 0.3$, saturation $\pm 0.3$, hue $\pm 0.1$), Random Resized Crop ($0.7 \text{ to } 1.0$), Random Rotation ($\pm 15^\circ$), and horizontal/vertical flips.
+     - **Arm 3 (Background-Suppression / Masked-Border Training):** Training with peripheral background suppression (random border masking / cutout), forcing the network to attend to the central lesion area rather than peripheral background.
+  5. **Mandatory Shortcut Probe Benchmarking:** Every arm is evaluated across the 5 folds for out-of-fold AUC, Platt-scaled calibration (Brier score, quantile-binned ECE), and re-tested against the border-only probe (centre 60% masked) versus centre-only lesion crop to measure whether shortcut reliance is reduced.
+
+
 
 
 

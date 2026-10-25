@@ -56,6 +56,8 @@ minio_data/
 # Machine learning data and model artifacts (ignore binary images, weights, archives, manifest CSV)
 ml/data/manifest.csv
 ml/reports/private/
+ml/reports/plots/
+ml/checkpoints/
 ml/.cache/
 ml/weights/
 *.pth
