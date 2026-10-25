@@ -5,9 +5,13 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.image import ImageSummaryResponse
+
 # Unambiguous uppercase alphanumeric charset avoiding confusing chars (0/O, 1/I)
 REFERENCE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
-REFERENCE_REGEX = re.compile(r"^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$")
+REFERENCE_REGEX = re.compile(
+    r"^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$"
+)
 
 
 def generate_case_reference() -> str:
@@ -51,13 +55,15 @@ class Urgency(str, Enum):
     Clinical review urgency tier determining review turnaround SLAs.
     Strictly decoupled from AI prediction certainty per docs/DECISIONS.md.
     """
-    URGENT = "urgent"   # < 4 hours SLA
-    SOON = "soon"       # < 24 hours SLA
-    ROUTINE = "routine" # < 48 hours SLA
+
+    URGENT = "urgent"  # < 4 hours SLA
+    SOON = "soon"  # < 24 hours SLA
+    ROUTINE = "routine"  # < 48 hours SLA
 
 
 class ReasonCode(str, Enum):
     """Authoritative transition reason codes recorded in audit_log and status history."""
+
     # Draft & Creation
     DRAFT_CREATED = "draft_created"
 
@@ -140,6 +146,7 @@ class CaseCreateRequest(BaseModel):
 
 class CaseStatusResponse(BaseModel):
     """Role-scoped case tracking response for patients and screeners (status only)."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -149,6 +156,7 @@ class CaseStatusResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     next_step: str | None = None
+    images: list[ImageSummaryResponse] = Field(default_factory=list)
 
 
 class CasePoolMetadataResponse(BaseModel):
@@ -156,6 +164,7 @@ class CasePoolMetadataResponse(BaseModel):
     Role-scoped metadata-only response for verified doctors viewing an unassigned pool case.
     Discloses zero photographic binaries and zero clinical questionnaire answers.
     """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -169,6 +178,7 @@ class CasePoolMetadataResponse(BaseModel):
 
 class CaseDetailResponse(BaseModel):
     """Full clinical inspection response for assigned and second-opinion clinicians."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -181,6 +191,7 @@ class CaseDetailResponse(BaseModel):
     second_opinion_doctor_id: str | None = None
     version: int
     anatomical_sites: list[str] = Field(default_factory=list)
+    images: list[ImageSummaryResponse] = Field(default_factory=list)
     is_demo: bool = False
     created_at: datetime
     updated_at: datetime
@@ -188,6 +199,7 @@ class CaseDetailResponse(BaseModel):
 
 class CaseTimelineResponse(BaseModel):
     """Chronological state transition timeline visible to assigned clinicians."""
+
     model_config = ConfigDict(from_attributes=True)
 
     case_id: str
@@ -197,3 +209,26 @@ class CaseTimelineResponse(BaseModel):
 
 class CaseCancelRequest(BaseModel):
     reason_text: str | None = None
+
+
+class FailedImageDetail(BaseModel):
+    image_id: str
+    site: str
+    view_type: str
+    reason_codes: list[str]
+
+
+class CaseSubmitResponse(BaseModel):
+    """Response returned upon case submission with quality gate & red-flag triage outcome."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    reference: str
+    status: CaseStatus
+    urgency: Urgency
+    red_flag: bool
+    red_flag_codes: list[str] = Field(default_factory=list)
+    risk_factors: list[str] = Field(default_factory=list)
+    failed_images: list[FailedImageDetail] = Field(default_factory=list)
+    message: str

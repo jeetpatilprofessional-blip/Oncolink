@@ -82,10 +82,38 @@ Generate strong random secrets before deployment using the following commands:
   - `POST /patients`: Screener creates unauthenticated camp screening profile ($age \ge 18$).
   - `POST /cases`: Patient drafts self-screening case or screener drafts case for a screener-created patient.
   - `GET /cases`: Role-scoped list (patient sees own cases; screener sees own created cases; others receive 403).
-  - `GET /cases/{id}`: Role-scoped viewer (patient/screener receive status view; verified doctor on pool case in `ai_analyzed` receives metadata-only view; assigned/2nd-opinion doctor receives full clinical view; admin/coordinator receive 403; wrong ownership returns 404).
+  - `GET /cases/{id}`: Role-scoped viewer (patient/screener receive status view; verified doctor on pool case in `ai_analyzed` receives metadata-only view; assigned/2nd-opinion doctor receives full clinical view; admin/coordinator receive 403; wrong ownership returns 404). Includes role-scoped `images` metadata array.
   - `POST /cases/{id}/cancel`: Cancel case prior to signing (`draft`, `submitted`, `quality_check`, `needs_retake`, `queued`, `ai_analyzed`, `under_review`, `uncertain_needs_inperson`); post-signing states return `409 Conflict`.
   - `GET /cases/{id}/timeline`: Status timeline for assigned or second-opinion doctor (others 403 or 404).
   - `POST /consent`: Extended to record informed consent with `patient_id` (self-signed or screener in-person).
+  - `POST /cases/{id}/history`: Submit structured oral health and risk history questionnaire (strictly validated enums, booleans, small integers; zero free text; `extra="forbid"`).
+  - `POST /cases/{id}/images`: Upload oral photographs (multipart; verified by magic bytes JPEG/PNG/WebP, 10 MB cap, Pillow decompression bomb protection, EXIF/GPS stripped via re-encoding, GridFS storage, 12-image cap, automatic superseding).
+  - `GET /cases/{id}/images/{image_id}`: Stream authenticated clinical photograph binary (`Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, immutable audit log entry with IDs only).
+  - `POST /cases/{id}/submit`: Authoritative submission pipeline gated by 422 preconditions (active consent, saved history, photographic protocol coverage: >=1 closeup and >=2 context views). Executes atomic chained transitions (`submitted -> quality_check -> [red_flag | needs_retake | queued]`) in ONE single transaction with one audit entry per transition edge.
+
+### Screening Triage & Quality Architecture
+
+#### Urgency Rule Table
+| Symptom Condition | Assigned Urgency | Review SLA Target | Description |
+|---|---|---|---|
+| Any red-flag symptom present | `urgent` | < 4 hours | Emergency fast-track triage; placed at top of clinical queue |
+| No red-flag symptoms present | `routine` | < 48 hours | Standard clinical review queue |
+
+*Note: This is a prototype research heuristic and rule-based triage rule, NOT clinical guidance. Case review urgency may be updated subsequently by calibrated AI inference or by an authorized reviewing clinician.*
+
+#### Image Quality Gate Threshold Table
+| Metric Name | Constant Identifier | Threshold Value | Reason Code | Description / Clinical Rationale |
+|---|---|---|---|---|
+| Minimum Width | `MIN_WIDTH` | 480 px | `too_small` | Minimum horizontal resolution for clear mucosal inspection |
+| Minimum Height | `MIN_HEIGHT` | 480 px | `too_small` | Minimum vertical resolution for clinical examination |
+| Laplacian Variance | `BLUR_LAPLACIAN_VAR_MIN` | 100.0 | `too_blurry` | Variance of Laplacian on 512x512 grayscale copy; rejects out-of-focus captures |
+| Minimum Brightness | `BRIGHTNESS_MEAN_MIN` | 40.0 | `too_dark` | Lower limit on average pixel luminance (0–255 scale) |
+| Max Crushed Shadows | `SHADOW_FRACTION_MAX` | 0.45 | `too_dark` | Max fraction of pixels with luminance <= 20 (underexposure) |
+| Maximum Brightness | `BRIGHTNESS_MEAN_MAX` | 215.0 | `too_bright` | Upper limit on average pixel luminance (overexposure) |
+| Max Blown Highlights | `HIGHLIGHT_FRACTION_MAX` | 0.40 | `too_bright` | Max fraction of pixels with luminance >= 240 (flash glare / specular saturation) |
+| Minimum Detail / StdDev | `DETAIL_STD_DEV_MIN` | 12.0 | `low_detail` | Minimum standard deviation of grayscale intensities; rejects blank / uniform surfaces |
+
+*Note: All thresholds are initial heuristics that must be tuned on real phone photos collected during field screening camps.*
 
 ---
 

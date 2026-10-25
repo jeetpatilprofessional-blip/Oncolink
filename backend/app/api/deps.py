@@ -13,8 +13,10 @@ from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
 from app.services.case_service import CaseService
 from app.services.consent_service import ConsentService
+from app.services.image_service import ImageService
 from app.services.patient_service import PatientService
 from app.services.totp_service import TOTPService
+from app.storage import GridFSStorageService, StorageService
 
 security_bearer = HTTPBearer(auto_error=False)
 
@@ -60,6 +62,17 @@ def get_patient_service(db: Annotated[AsyncIOMotorDatabase, Depends(get_db)]) ->
 
 def get_case_service(db: Annotated[AsyncIOMotorDatabase, Depends(get_db)]) -> CaseService:
     return CaseService(db)
+
+
+def get_storage_service(db: Annotated[AsyncIOMotorDatabase, Depends(get_db)]) -> StorageService:
+    return GridFSStorageService(db)
+
+
+def get_image_service(
+    db: Annotated[AsyncIOMotorDatabase, Depends(get_db)],
+    storage: Annotated[StorageService, Depends(get_storage_service)],
+) -> ImageService:
+    return ImageService(db, storage)
 
 
 # --- User & Role Authentication Guards ---

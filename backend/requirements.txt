@@ -12,3 +12,7 @@ argon2-cffi==25.1.0
 pyjwt==2.15.1
 pyotp==2.10.0
 cryptography==50.0.2
+Pillow==13.0.0
+opencv-python-headless==5.0.0.93
+python-multipart==0.0.32
+numpy==2.4.6

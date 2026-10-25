@@ -20,12 +20,17 @@ ALLOWED_TRANSITIONS: dict[tuple[CaseStatus, CaseStatus], set[str]] = {
     (CaseStatus.SUBMITTED, CaseStatus.QUALITY_CHECK): {"system"},
     # 3. submitted -> red_flag (System)
     (CaseStatus.SUBMITTED, CaseStatus.RED_FLAG): {"system"},
+    # 3b. quality_check -> red_flag (System)
+    (CaseStatus.QUALITY_CHECK, CaseStatus.RED_FLAG): {"system"},
     # 4. quality_check -> needs_retake (System)
     (CaseStatus.QUALITY_CHECK, CaseStatus.NEEDS_RETAKE): {"system"},
     # 5. quality_check -> queued (System)
     (CaseStatus.QUALITY_CHECK, CaseStatus.QUEUED): {"system"},
     # 6. needs_retake -> submitted (Patient, Screener)
-    (CaseStatus.NEEDS_RETAKE, CaseStatus.SUBMITTED): {UserRole.PATIENT.value, UserRole.SCREENER.value},
+    (CaseStatus.NEEDS_RETAKE, CaseStatus.SUBMITTED): {
+        UserRole.PATIENT.value,
+        UserRole.SCREENER.value,
+    },
     # 7. queued -> ai_analyzed (System)
     (CaseStatus.QUEUED, CaseStatus.AI_ANALYZED): {"system"},
     # 8. ai_analyzed -> under_review (Doctor, System)
@@ -47,7 +52,9 @@ ALLOWED_TRANSITIONS: dict[tuple[CaseStatus, CaseStatus], set[str]] = {
     # 16. referral_pending -> confirmed (Hospital Coordinator)
     (CaseStatus.REFERRAL_PENDING, CaseStatus.CONFIRMED): {UserRole.HOSPITAL_COORDINATOR.value},
     # 17. referral_pending -> declined_by_hospital (Hospital Coordinator)
-    (CaseStatus.REFERRAL_PENDING, CaseStatus.DECLINED_BY_HOSPITAL): {UserRole.HOSPITAL_COORDINATOR.value},
+    (CaseStatus.REFERRAL_PENDING, CaseStatus.DECLINED_BY_HOSPITAL): {
+        UserRole.HOSPITAL_COORDINATOR.value
+    },
     # 18. declined_by_hospital -> referred (Doctor)
     (CaseStatus.DECLINED_BY_HOSPITAL, CaseStatus.REFERRED): {UserRole.DOCTOR.value},
     # 19. confirmed -> attended (Hospital Coordinator)
@@ -59,11 +66,17 @@ ALLOWED_TRANSITIONS: dict[tuple[CaseStatus, CaseStatus], set[str]] = {
     # 22. outreach -> confirmed (Hospital Coordinator) - requires new appointment
     (CaseStatus.OUTREACH, CaseStatus.CONFIRMED): {UserRole.HOSPITAL_COORDINATOR.value},
     # 23. outreach -> lost_to_followup (System, Hospital Coordinator)
-    (CaseStatus.OUTREACH, CaseStatus.LOST_TO_FOLLOWUP): {"system", UserRole.HOSPITAL_COORDINATOR.value},
+    (CaseStatus.OUTREACH, CaseStatus.LOST_TO_FOLLOWUP): {
+        "system",
+        UserRole.HOSPITAL_COORDINATOR.value,
+    },
     # 24. attended -> outcome_recorded (Hospital Coordinator)
     (CaseStatus.ATTENDED, CaseStatus.OUTCOME_RECORDED): {UserRole.HOSPITAL_COORDINATOR.value},
     # 25. outcome_recorded -> closed (System, Hospital Coordinator)
-    (CaseStatus.OUTCOME_RECORDED, CaseStatus.CLOSED): {"system", UserRole.HOSPITAL_COORDINATOR.value},
+    (CaseStatus.OUTCOME_RECORDED, CaseStatus.CLOSED): {
+        "system",
+        UserRole.HOSPITAL_COORDINATOR.value,
+    },
 }
 
 # 26. Cancelled: Allowed strictly prior to signed from the 8 pre-signing states
@@ -143,7 +156,10 @@ async def transition(
     if isinstance(actor, UserInDB):
         actor_id = str(actor.id)
         actor_role = actor.role.value if hasattr(actor.role, "value") else str(actor.role)
-        is_verified_doc = (actor.role == UserRole.DOCTOR and actor.verification_status == DoctorVerificationStatus.VERIFIED)
+        is_verified_doc = (
+            actor.role == UserRole.DOCTOR
+            and actor.verification_status == DoctorVerificationStatus.VERIFIED
+        )
     elif isinstance(actor, dict):
         actor_id = str(actor.get("id", "system"))
         actor_role = str(actor.get("role", "system"))
@@ -151,7 +167,9 @@ async def transition(
     else:
         actor_id = getattr(actor, "id", "system")
         actor_role = str(getattr(actor, "role", "system"))
-        is_verified_doc = getattr(actor, "verification_status", None) == DoctorVerificationStatus.VERIFIED
+        is_verified_doc = (
+            getattr(actor, "verification_status", None) == DoctorVerificationStatus.VERIFIED
+        )
 
     # Gate 2: Unverified doctors are blocked uniformly
     if actor_role == UserRole.DOCTOR.value and not is_verified_doc:
@@ -177,12 +195,19 @@ async def transition(
         # 2. Ownership & role assignment checks (Anti-Probing & Authorization Invariants)
         if actor_role == UserRole.PATIENT.value:
             # Patient must own this case
-            caller_patient_id = getattr(actor, "patient_id", None) or (actor.get("patient_id") if isinstance(actor, dict) else None)
+            caller_patient_id = getattr(actor, "patient_id", None) or (
+                actor.get("patient_id") if isinstance(actor, dict) else None
+            )
             if not caller_patient_id:
-                patient_rec = await target_db["patients"].find_one({"user_id": actor_id, "erased": False}, session=session)
+                patient_rec = await target_db["patients"].find_one(
+                    {"user_id": actor_id, "erased": False}, session=session
+                )
                 caller_patient_id = str(patient_rec["_id"]) if patient_rec else None
 
-            if case_doc.get("patient_id") != caller_patient_id and case_doc.get("created_by") != actor_id:
+            if (
+                case_doc.get("patient_id") != caller_patient_id
+                and case_doc.get("created_by") != actor_id
+            ):
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Case not found",
@@ -199,7 +224,11 @@ async def transition(
         elif actor_role == UserRole.DOCTOR.value:
             # Assigned doctor transitions require the caller to be the primary assigned doctor
             assigned_doc_id = case_doc.get("assigned_doctor_id")
-            if from_state in (CaseStatus.UNDER_REVIEW, CaseStatus.SIGNED, CaseStatus.DECLINED_BY_HOSPITAL):
+            if from_state in (
+                CaseStatus.UNDER_REVIEW,
+                CaseStatus.SIGNED,
+                CaseStatus.DECLINED_BY_HOSPITAL,
+            ):
                 if assigned_doc_id and assigned_doc_id != actor_id:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
@@ -246,7 +275,11 @@ async def transition(
         }
         if assigned_doctor_id is not None:
             set_payload["assigned_doctor_id"] = assigned_doctor_id
-        elif target_state == CaseStatus.UNDER_REVIEW and from_state == CaseStatus.AI_ANALYZED and actor_role == UserRole.DOCTOR.value:
+        elif (
+            target_state == CaseStatus.UNDER_REVIEW
+            and from_state == CaseStatus.AI_ANALYZED
+            and actor_role == UserRole.DOCTOR.value
+        ):
             set_payload["assigned_doctor_id"] = actor_id
         elif target_state == CaseStatus.AI_ANALYZED and from_state == CaseStatus.UNDER_REVIEW:
             # Voluntary release unassigns the doctor while keeping AI result
@@ -301,6 +334,164 @@ async def transition(
 
     try:
         return await run_transaction(target_db.client, _execute_tx)
+    except OperationFailure as err:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Concurrent modification conflict: {err}",
+        ) from err
+
+
+async def transition_chain(
+    case_id: str | ObjectId,
+    steps: list[tuple[CaseStatus | str, ReasonCode | str, str | None, str]],
+    actor: UserInDB | dict[str, Any],
+    *,
+    db: AsyncIOMotorDatabase | None = None,
+    extra_case_updates: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Executes an atomic sequence of state transitions within ONE single MongoDB transaction.
+    Writes one status_history record and one immutable audit entry per transition edge.
+
+    Atomicity Invariant:
+    If any step or audit insertion fails mid-chain, the entire transaction rolls back automatically,
+    leaving the case document in its initial state with zero partial transitions.
+    """
+    target_db = db if db is not None else get_database()
+    case_oid = ObjectId(case_id) if ObjectId.is_valid(str(case_id)) else case_id
+
+    # Normalize caller actor
+    if isinstance(actor, UserInDB):
+        caller_actor_id = str(actor.id)
+        caller_actor_role = actor.role.value if hasattr(actor.role, "value") else str(actor.role)
+    elif isinstance(actor, dict):
+        caller_actor_id = str(actor.get("id", "system"))
+        caller_actor_role = str(actor.get("role", "system"))
+    else:
+        caller_actor_id = getattr(actor, "id", "system")
+        caller_actor_role = str(getattr(actor, "role", "system"))
+
+    async def _execute_chain_tx(session: AsyncIOMotorClientSession) -> dict[str, Any]:
+        case_doc = await target_db["cases"].find_one({"_id": case_oid}, session=session)
+        if not case_doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Case '{case_id}' not found.",
+            )
+
+        initial_status = CaseStatus(case_doc["status"])
+        initial_version = int(case_doc.get("version", 1))
+
+        current_state = initial_status
+        now = datetime.now(UTC)
+        new_history_entries: list[dict[str, Any]] = []
+        audit_service = AuditService(target_db)
+
+        # Enforce caller ownership on initial state
+        if caller_actor_role == UserRole.PATIENT.value:
+            caller_patient_id = getattr(actor, "patient_id", None) or (
+                actor.get("patient_id") if isinstance(actor, dict) else None
+            )
+            if not caller_patient_id:
+                patient_rec = await target_db["patients"].find_one(
+                    {"user_id": caller_actor_id, "erased": False}, session=session
+                )
+                caller_patient_id = str(patient_rec["_id"]) if patient_rec else None
+
+            if (
+                case_doc.get("patient_id") != caller_patient_id
+                and case_doc.get("created_by") != caller_actor_id
+            ):
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+
+        elif caller_actor_role == UserRole.SCREENER.value:
+            if case_doc.get("created_by") != caller_actor_id:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+
+        for to_state, reason_code, reason_text, step_actor_role in steps:
+            target_state = CaseStatus(to_state) if isinstance(to_state, str) else to_state
+            norm_code = reason_code.value if hasattr(reason_code, "value") else str(reason_code)
+
+            if not is_transition_allowed(current_state, target_state, step_actor_role):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"Illegal state transition from '{current_state.value}' to '{target_state.value}' "
+                        f"for actor role '{step_actor_role}'."
+                    ),
+                )
+
+            step_actor_id = caller_actor_id if step_actor_role == caller_actor_role else "system"
+
+            hist_entry = {
+                "from_status": current_state.value,
+                "to_status": target_state.value,
+                "actor_id": step_actor_id,
+                "actor_role": step_actor_role,
+                "timestamp": now,
+                "reason_code": norm_code,
+                "reason_text": reason_text,
+            }
+            new_history_entries.append(hist_entry)
+
+            # Insert immutable audit entry per edge (structural IDs and reason_code ONLY)
+            await audit_service.insert(
+                event_type="case_status_transition",
+                actor_id=step_actor_id,
+                actor_role=step_actor_role,
+                target_user_id=str(case_doc.get("patient_id", "")),
+                details={
+                    "case_id": str(case_doc["_id"]),
+                    "reference": case_doc.get("reference", ""),
+                    "from_status": current_state.value,
+                    "to_status": target_state.value,
+                    "reason_code": norm_code,
+                },
+                session=session,
+            )
+
+            current_state = target_state
+
+        final_version = initial_version + len(steps)
+        set_payload: dict[str, Any] = {
+            "status": current_state.value,
+            "version": final_version,
+            "updated_at": now,
+        }
+        if extra_case_updates:
+            set_payload.update(extra_case_updates)
+
+        update_filter = {
+            "_id": case_doc["_id"],
+            "version": initial_version,
+            "status": initial_status.value,
+        }
+        update_result = await target_db["cases"].update_one(
+            update_filter,
+            {
+                "$set": set_payload,
+                "$push": {"status_history": {"$each": new_history_entries}},
+            },
+            session=session,
+        )
+
+        if update_result.modified_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Concurrent modification conflict: case was modified by another operation.",
+            )
+
+        case_doc["status"] = current_state.value
+        case_doc["version"] = final_version
+        case_doc["updated_at"] = now
+        case_doc["status_history"].extend(new_history_entries)
+        if extra_case_updates:
+            case_doc.update(extra_case_updates)
+
+        return case_doc
+
+    try:
+        return await run_transaction(target_db.client, _execute_chain_tx)
     except OperationFailure as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

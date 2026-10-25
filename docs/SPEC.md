@@ -104,9 +104,10 @@ red_flag (emergency) is entered from submitted and jumps to the top of the queue
 **5.2 Structured history.**
 - Tobacco: smoked, smokeless, areca nut, betel quid; frequency and years of use
 - Alcohol: frequency
-- Lesion: duration, pain, non-healing for more than two weeks, bleeding, white or red patch, lump
+- Lesion: duration in weeks, pain, non-healing for more than two weeks, bleeding, white or red patch, lump
 - Function: difficulty swallowing, opening the mouth, or speaking; unexplained weight loss
 - Family history of cancer
+- Red-flag symptoms: heavy bleeding, difficulty breathing, rapid swelling in the last few days
 
 **5.3 Capture protocol.** Required: one lesion close-up plus at least two context views. Full set: left cheek, right cheek, tongue (top and sides), floor of mouth, hard palate, lips and gums. The screener or patient selects the site for each photo; this becomes the recorded affected region, not a hardcoded guess.
 

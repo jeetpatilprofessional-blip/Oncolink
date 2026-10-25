@@ -97,3 +97,17 @@ This document records authoritative technical and architectural decisions for th
      - Case claiming (`POST /cases/{id}/claim`) is allowed **strictly and exclusively from `ai_analyzed`** when no clinician is assigned (`assigned_doctor_id == null`). Claiming from any other state (including `queued`) returns `409 Conflict`.
      - Voluntary release (`POST /cases/{id}/release`) transitions `under_review -> ai_analyzed`, unassigning the doctor and returning the case to the claimable pool while preserving the existing AI inference output.
      - **Requirement for the AI task:** The AI pipeline step (`queued -> ai_analyzed`) must always advance the case to `ai_analyzed`, even when model inference fails, times out, or errors out. In failure scenarios, an `ai_status` of `'unavailable'` (or `'completed'` on success) must be stored on the case document. This guarantees cases are never stranded in `queued` and clinicians can always claim and triage them manually.
+
+## Decision 15: Screening Intake Architecture, Photographic Sanitization, and Submission Pipeline
+
+* **Decision:**
+  1. **Strictly Structured History:** The questionnaire (`POST /cases/{id}/history`) permits zero free-text fields and rejects unknown attributes (`extra="forbid"`). Answers are persisted in the dedicated `case_history` collection.
+  2. **Rule-Based Emergency Triage & Urgency:** Red-flag detection (`evaluate_red_flags`) is a deterministic pure function operating strictly on history inputs, completely independent of AI inference. The urgency engine (`determine_urgency`) establishes initial review priority: any red flag assigns `Urgency.URGENT` (< 4h SLA); otherwise `Urgency.ROUTINE` (< 48h SLA). Informational risk flags (age 30–65, tobacco/areca nut exposure) are tracked orthogonally without impacting urgency.
+  3. **Multi-Stage Photographic Sanitization:** Clinical uploads (`POST /cases/{id}/images`) undergo rigorous defense-in-depth:
+     - Format validation by file magic bytes only (JPEG, PNG, WebP), rejecting extension-based spoofing.
+     - Payload cap of 10 MB and Pillow decompression bomb mitigation (25 megapixel ceiling).
+     - Deterministic decode and re-encode with Pillow, dropping all EXIF metadata (GPS coordinates, device serial numbers) and any trailing appended byte payloads.
+     - Storage in MongoDB GridFS with randomized identifiers and SHA-256 integrity hashes.
+     - Case quota of 12 images; duplicate uploads for the same `(site, view_type)` automatically supersede the prior capture and purge old GridFS chunks.
+  4. **Dual-Use Quality Gate:** The quality evaluation engine (`evaluate_image_quality`) operates advisory at upload and authoritative at submission. It inspects blur (Laplacian variance on standardized 512x512 grayscale copies), exposure (mean luminance and fractions of crushed shadows/blown highlights), minimum resolution (480x480), and texture detail. Failures return translation keys (e.g. `too_blurry`, `too_dark`, `too_bright`, `too_small`, `low_detail`) for client-side localization.
+  5. **Atomic Chained Submission Pipeline:** `POST /cases/{id}/submit` verifies preconditions (active consent, saved history, photographic protocol coverage: >=1 closeup and >=2 context views), returning 422 with a specific `missing_items` array on failure. The submission executes atomically via `transition_chain` in ONE single MongoDB transaction (`submitted -> quality_check -> [red_flag | needs_retake | queued]`), recording one status history entry and one structural audit entry per transition edge.
