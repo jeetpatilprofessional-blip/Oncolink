@@ -1,0 +1,20 @@
+{
+  "name": "oncolink",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ONCOLINK Oral Lesion Screening & Referral Research Prototype",
+  "scripts": {
+    "dev": "docker compose up",
+    "dev:build": "docker compose up --build",
+    "dev:down": "docker compose down",
+    "build": "docker compose build",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "docker compose exec -T backend pytest",
+    "test:frontend": "npm --prefix frontend run test",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "docker compose exec -T backend ruff check .",
+    "lint:frontend": "npm --prefix frontend run lint",
+    "typecheck": "npm --prefix frontend run typecheck",
+    "format": "npm --prefix frontend run format"
+  }
+}

@@ -1,0 +1,163 @@
+services:
+  mongodb:
+    image: mongo:7.0.14
+    container_name: oncolink-mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: admin
+    entrypoint: >
+      bash -c '
+        mkdir -p /data/keyfile
+        if [ ! -f /data/keyfile/mongo.key ]; then
+          openssl rand -base64 756 > /data/keyfile/mongo.key
+          chmod 400 /data/keyfile/mongo.key
+          chown -R 999:999 /data/keyfile
+        fi
+        exec /usr/local/bin/docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /data/keyfile/mongo.key
+      '
+    volumes:
+      - mongo_data:/data/db
+      - mongo_keyfile:/data/keyfile
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval 'db.adminCommand({ping: 1})' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  mongo-setup:
+    image: mongo:7.0.14
+    container_name: oncolink-mongo-setup
+    restart: "no"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGO_ROOT_USER: ${MONGO_ROOT_USER}
+      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_APP_USER: ${MONGO_APP_USER}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD}
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
+    entrypoint: >
+      bash -c '
+        echo "Configuring single-node replica set rs0..."
+        mongosh --host mongodb:27017 -u $$MONGO_ROOT_USER -p $$MONGO_ROOT_PASSWORD --authenticationDatabase admin --eval "
+          try {
+            var status = rs.status();
+            if (status.ok === 1) {
+              console.log(\"Replica set already active.\");
+            }
+          } catch (e) {
+            console.log(\"Initiating replica set...\");
+            rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongodb:27017\"}]});
+          }
+        "
+        sleep 2
+        echo "Creating application user $$MONGO_APP_USER on $$MONGO_DB_NAME..."
+        mongosh --host mongodb:27017 -u $$MONGO_ROOT_USER -p $$MONGO_ROOT_PASSWORD --authenticationDatabase admin --eval "
+          var dbApp = db.getSiblingDB(\"$$MONGO_DB_NAME\");
+          var userExists = dbApp.getUser(\"$$MONGO_APP_USER\");
+          if (!userExists) {
+            dbApp.createUser({
+              user: \"$$MONGO_APP_USER\",
+              pwd: \"$$MONGO_APP_PASSWORD\",
+              roles: [
+                { role: \"readWrite\", db: \"$$MONGO_DB_NAME\" },
+                { role: \"dbAdmin\", db: \"$$MONGO_DB_NAME\" },
+                { role: \"readWrite\", db: \"oncolink_test\" },
+                { role: \"dbAdmin\", db: \"oncolink_test\" }
+              ]
+            });
+            console.log(\"Application user created successfully.\");
+          } else {
+            console.log(\"Application user exists.\");
+          }
+        "
+      '
+
+  minio:
+    image: pgsty/minio:latest
+    container_name: oncolink-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: oncolink-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - PROJECT_NAME=${PROJECT_NAME}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - BACKEND_HOST=${BACKEND_HOST}
+      - BACKEND_PORT=${BACKEND_PORT}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - MONGO_URI=${MONGO_URI}
+      - MONGO_TEST_URI=${MONGO_TEST_URI}
+      - MONGO_DB_NAME=${MONGO_DB_NAME}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
+      - MINIO_USE_SSL=${MINIO_USE_SSL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - MODEL_VERSION=${MODEL_VERSION}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      mongo-setup:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: oncolink-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  mongo_data:
+    name: oncolink_mongo_data
+  mongo_keyfile:
+    name: oncolink_mongo_keyfile
+  minio_data:
+    name: oncolink_minio_data

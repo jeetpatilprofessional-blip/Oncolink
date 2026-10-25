@@ -1,0 +1,55 @@
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        protected_namespaces=("settings_",),
+    )
+
+    project_name: str = "OncoLink"
+    environment: str = "development"
+    log_level: str = "INFO"
+
+    backend_host: str = "0.0.0.0"
+    backend_port: int = 8000
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    # MongoDB (Single-node replica set with auth)
+    mongo_uri: str = (
+        "mongodb://oncolink_app:oncolink_app_dev_password_change_me@mongodb:27017/oncolink"
+        "?replicaSet=rs0&authSource=oncolink"
+    )
+    mongo_db_name: str = "oncolink"
+    mongo_test_uri: str = (
+        "mongodb://oncolink_app:oncolink_app_dev_password_change_me@mongodb:27017/oncolink_test"
+        "?replicaSet=rs0&authSource=oncolink"
+    )
+
+    # MinIO
+    minio_endpoint: str = "minio:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minio_dev_password_change_me"
+    minio_bucket_name: str = "oncolink-cases"
+    minio_use_ssl: bool = False
+
+    # Security & Tokens
+    jwt_secret: str = "change_this_to_a_secure_random_hex_key_before_production"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+
+    # Model Locking
+    model_version: str = "1.0.0-locked"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
