@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import { setup2fa, verifySetup2fa } from "../api/client";
 import type { TwoFactorSetupResponse } from "../api/types";
@@ -9,8 +9,10 @@ import { useAuth } from "../context";
 import { t } from "../locales/i18n";
 
 export const TwoFactorSetupPage: React.FC = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, login2fa, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const tempToken = (location.state as { temp_token?: string })?.temp_token;
 
   const [setupData, setSetupData] = useState<TwoFactorSetupResponse | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
@@ -26,7 +28,7 @@ export const TwoFactorSetupPage: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
-    setup2fa()
+    setup2fa(tempToken)
       .then(async (data) => {
         if (!mounted) return;
         setSetupData(data);
@@ -45,27 +47,9 @@ export const TwoFactorSetupPage: React.FC = () => {
           }
         }
       })
-      .catch(async (err) => {
+      .catch((err) => {
         if (!mounted) return;
-        if (import.meta.env.DEV) {
-          const fallbackData = {
-            provisioning_uri: "otpauth://totp/ONCOLINK:doctor%40hospital.org?secret=JBSWY3DPEHPK3PXP&issuer=ONCOLINK",
-            secret: "JBSWY3DPEHPK3PXP",
-          };
-          setSetupData(fallbackData);
-          try {
-            const svgString = await QRCode.toString(fallbackData.provisioning_uri, {
-              type: "svg",
-              margin: 1,
-              color: { dark: "#18242C", light: "#FFFFFF" },
-            });
-            if (mounted) setQrSvg(svgString);
-          } catch {
-            // ignore
-          }
-        } else {
-          setErrorMsg(err instanceof Error ? err.message : t("errors.generic_error"));
-        }
+        setErrorMsg(err instanceof Error ? err.message : t("errors.generic_error"));
       })
       .finally(() => {
         if (mounted) setLoadingSetup(false);
@@ -74,7 +58,7 @@ export const TwoFactorSetupPage: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [tempToken]);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,9 +72,13 @@ export const TwoFactorSetupPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const res = await verifySetup2fa(code.trim(), setupData.secret);
+      const res = await verifySetup2fa(code.trim(), setupData.secret, tempToken);
       setRecoveryCodes(res.recovery_codes || []);
-      await refreshUser();
+      if (tempToken) {
+        await login2fa(tempToken, code.trim());
+      } else {
+        await refreshUser();
+      }
       setIsVerified(true);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : t("errors.invalid_totp"));

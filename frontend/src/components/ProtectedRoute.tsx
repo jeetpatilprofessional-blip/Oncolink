@@ -24,6 +24,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!user) {
+    // Allow enrollment route /2fa/setup when a valid temp_token is provided from step-1 login
+    if (location.pathname === "/2fa/setup" && (location.state as { temp_token?: string })?.temp_token) {
+      return <Outlet />;
+    }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

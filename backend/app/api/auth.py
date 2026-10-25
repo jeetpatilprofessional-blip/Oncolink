@@ -249,6 +249,7 @@ async def login(
             role=role,
             requires_2fa=True,
             temp_token=temp_token,
+            totp_enrolled=bool(user_doc.get("totp_enrolled", False)),
         )
 
     # Non-2FA roles (patient, screener, hospital_coordinator) receive tokens directly

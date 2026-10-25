@@ -37,50 +37,7 @@ export const AdminPage: React.FC = () => {
       const data = await getAdminUsers();
       setUsers(data);
     } catch (err) {
-      if (import.meta.env.DEV && users.length === 0) {
-        setUsers([
-          {
-            id: "u-1",
-            email: "dr.sharma@hospital.org",
-            role: "doctor",
-            is_active: true,
-            is_demo: false,
-            created_at: "2026-10-25T10:00:00Z",
-            registration_number: "MCI-45892",
-            verification_status: "pending",
-            totp_enrolled: true,
-          },
-          {
-            id: "u-2",
-            email: "anita.patel@example.org",
-            role: "patient",
-            is_active: true,
-            is_demo: true,
-            created_at: "2026-10-25T10:05:00Z",
-            totp_enrolled: false,
-          },
-          {
-            id: "u-3",
-            email: "screener.raj@clinic.org",
-            role: "screener",
-            is_active: true,
-            is_demo: false,
-            created_at: "2026-10-25T10:10:00Z",
-            totp_enrolled: true,
-          },
-          {
-            id: "u-4",
-            email: "coord.verma@district-hospital.org",
-            role: "hospital_coordinator",
-            is_active: true,
-            is_demo: false,
-            created_at: "2026-10-25T10:15:00Z",
-            totp_enrolled: true,
-          },
-        ]);
-      } else {
-        setErrorMsg(err instanceof Error ? err.message : t("errors.generic_error"));
-      }
+      setErrorMsg(err instanceof Error ? err.message : t("errors.generic_error"));
     } finally {
       setIsLoadingUsers(false);
     }
@@ -88,7 +45,6 @@ export const AdminPage: React.FC = () => {
 
   useEffect(() => {
     void fetchUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreateStaff = async (e: React.FormEvent) => {

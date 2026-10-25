@@ -4,15 +4,6 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context";
 import { AdminPage } from "./pages/AdminPage";
 import { CoordinatorHomePage } from "./pages/CoordinatorHomePage";
-import { DevComponentsPage } from "./pages/DevComponentsPage";
-import {
-  DevAdminPreview,
-  DevCoordinatorPreview,
-  DevDoctorPreview,
-  DevPatientPreview,
-  DevScreenerPreview,
-  DevTwoFactorPreview,
-} from "./pages/DevPreviewPages";
 import { DoctorHomePage } from "./pages/DoctorHomePage";
 import { ForbiddenPage } from "./pages/ForbiddenPage";
 import { HealthPage } from "./pages/HealthPage";
@@ -21,6 +12,14 @@ import { PatientHomePage } from "./pages/PatientHomePage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ScreenerHomePage } from "./pages/ScreenerHomePage";
 import { TwoFactorSetupPage } from "./pages/TwoFactorSetupPage";
+
+const DevComponentsPage = import.meta.env.DEV
+  ? React.lazy(() =>
+      import("./pages/DevComponentsPage").then((m) => ({
+        default: m.DevComponentsPage,
+      }))
+    )
+  : null;
 
 const RootRedirect: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -95,14 +94,17 @@ export const AppRoutes: React.FC = () => {
         <Route path="/admin" element={<AdminPage />} />
       </Route>
 
-      {/* Dev Design System Gallery and Previews */}
-      <Route path="/dev/components" element={<DevComponentsPage />} />
-      <Route path="/dev/admin" element={<DevAdminPreview />} />
-      <Route path="/dev/doctor" element={<DevDoctorPreview />} />
-      <Route path="/dev/patient" element={<DevPatientPreview />} />
-      <Route path="/dev/screener" element={<DevScreenerPreview />} />
-      <Route path="/dev/coordinator" element={<DevCoordinatorPreview />} />
-      <Route path="/dev/2fa" element={<DevTwoFactorPreview />} />
+      {/* Dev Design System Gallery (development only) */}
+      {import.meta.env.DEV && DevComponentsPage && (
+        <Route
+          path="/dev/components"
+          element={
+            <React.Suspense fallback={null}>
+              <DevComponentsPage />
+            </React.Suspense>
+          }
+        />
+      )}
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

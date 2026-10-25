@@ -12,3 +12,4 @@
 10. Keep work in small, separate tasks. Make small commits with clear messages.
 11. I develop on Windows. Give me commands that work in PowerShell. Do not rely on bash-only scripts or a Makefile; use npm scripts or PowerShell scripts, and run services through Docker where possible.
 12. End every task with a summary under three headings: Done, Not done, Assumptions.
+13. Every endpoint returning case or patient data must apply the ownership rules in docs/PERMISSIONS.md and ship a test where a different user of the same role requests that record and receives 404 (not 403, so record IDs cannot be probed).

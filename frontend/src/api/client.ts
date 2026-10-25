@@ -257,8 +257,12 @@ export async function getConsentCurrent(): Promise<ConsentCurrentResponse> {
   return res.json();
 }
 
-export async function setup2fa(): Promise<TwoFactorSetupResponse> {
-  const res = await apiFetch("/auth/2fa/setup", { method: "POST" });
+export async function setup2fa(tempToken?: string): Promise<TwoFactorSetupResponse> {
+  const headers: Record<string, string> = {};
+  if (tempToken) {
+    headers["X-Temp-Token"] = tempToken;
+  }
+  const res = await apiFetch("/auth/2fa/setup", { method: "POST", headers });
   if (!res.ok) {
     throw await parseErrorResponse(res);
   }
@@ -267,10 +271,16 @@ export async function setup2fa(): Promise<TwoFactorSetupResponse> {
 
 export async function verifySetup2fa(
   code: string,
-  secret: string
-): Promise<{ message: string; recovery_codes: string[] }> {
+  secret: string,
+  tempToken?: string
+): Promise<{ enrolled: boolean; recovery_codes: string[] }> {
+  const headers: Record<string, string> = {};
+  if (tempToken) {
+    headers["X-Temp-Token"] = tempToken;
+  }
   const res = await apiFetch("/auth/2fa/verify-setup", {
     method: "POST",
+    headers,
     body: JSON.stringify({ code: code.trim(), secret: secret.trim() }),
   });
   if (!res.ok) {

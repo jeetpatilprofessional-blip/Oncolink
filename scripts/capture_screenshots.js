@@ -1,4 +1,4 @@
-const { spawn } = require("child_process");
+const { spawn, execSync } = require("child_process");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -11,18 +11,6 @@ const OUT_DIR = "C:\\OncoLink\\docs\\screenshots";
 if (!fs.existsSync(OUT_DIR)) {
   fs.mkdirSync(OUT_DIR, { recursive: true });
 }
-
-const SCREENS = [
-  { name: "login", path: "/login" },
-  { name: "register", path: "/register" },
-  { name: "forbidden", path: "/forbidden" },
-  { name: "2fa-setup", path: "/dev/2fa" },
-  { name: "admin", path: "/dev/admin" },
-  { name: "patient-home", path: "/dev/patient" },
-  { name: "screener-home", path: "/dev/screener" },
-  { name: "doctor-home", path: "/dev/doctor" },
-  { name: "coordinator-home", path: "/dev/coordinator" },
-];
 
 function fetchJson(url) {
   return new Promise((resolve, reject) => {
@@ -44,6 +32,18 @@ function fetchJson(url) {
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function getTotpCode(secret) {
+  // Use pyotp via python in docker or host python
+  try {
+    const cmd = `docker compose exec -T backend python -c "import pyotp; print(pyotp.TOTP('${secret}').now())"`;
+    const out = execSync(cmd, { encoding: "utf8" });
+    return out.trim();
+  } catch (e) {
+    console.error("Error generating TOTP:", e);
+    throw e;
+  }
 }
 
 async function waitForChrome() {
@@ -96,22 +96,145 @@ class CdpSession {
       this.ws.close();
     }
   }
+
+  async eval(expression) {
+    const res = await this.send("Runtime.evaluate", {
+      expression,
+      returnByValue: true,
+      awaitPromise: true,
+    });
+    if (res.exceptionDetails) {
+      throw new Error(`Eval error: ${JSON.stringify(res.exceptionDetails)}`);
+    }
+    return res.result ? res.result.value : undefined;
+  }
+
+  async setViewport(width, height) {
+    await this.send("Emulation.setDeviceMetricsOverride", {
+      width,
+      height,
+      deviceScaleFactor: 1,
+      mobile: width === 360,
+    });
+  }
+
+  async captureScreenshot(filename) {
+    const { data } = await this.send("Page.captureScreenshot", { format: "png" });
+    const filePath = path.join(OUT_DIR, filename);
+    fs.writeFileSync(filePath, Buffer.from(data, "base64"));
+    console.log(`Saved screenshot: ${filePath} (${fs.statSync(filePath).size} bytes)`);
+  }
+
+  async clearStorage() {
+    await this.send("Network.clearBrowserCookies");
+    try {
+      await this.send("Storage.clearDataForOrigin", {
+        origin: "http://127.0.0.1:5173",
+        storageTypes: "all",
+      });
+    } catch {
+      // ignore
+    }
+  }
 }
 
 async function waitForReact(session, timeoutMs = 8000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const res = await session.send("Runtime.evaluate", {
-      expression: "document.getElementById('root') ? document.getElementById('root').innerHTML.length : 0",
-      returnByValue: true,
-    });
-    const len = res.result && res.result.value ? res.result.value : 0;
-    if (len > 50) {
-      return true;
-    }
+    const len = await session.eval(
+      "document.getElementById('root') ? document.getElementById('root').innerHTML.length : 0"
+    );
+    if (len > 50) return true;
     await sleep(200);
   }
   return false;
+}
+
+async function waitForSelector(session, selector, timeoutMs = 8000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const found = await session.eval(`!!document.querySelector(${JSON.stringify(selector)})`);
+    if (found) return true;
+    await sleep(200);
+  }
+  const url = await session.eval(`window.location.href`);
+  const bodyText = await session.eval(`document.body.innerText`);
+  throw new Error(`Timeout waiting for selector: ${selector} at ${url}. Body text: ${bodyText.slice(0, 300)}`);
+}
+
+async function loginAs(session, email, password) {
+  await session.send("Page.navigate", { url: "http://127.0.0.1:5173/login" });
+  await waitForSelector(session, 'input[type="email"]');
+  await session.eval(`
+    (() => {
+      const setInput = (input, val) => {
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+        setter.call(input, val);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      const emailInput = document.querySelector('input[type="email"]');
+      const pwdInput = document.querySelector('input[type="password"]');
+      setInput(emailInput, ${JSON.stringify(email)});
+      setInput(pwdInput, ${JSON.stringify(password)});
+      const submitBtn = Array.from(document.querySelectorAll('button')).find(b => b.type === 'submit');
+      if (submitBtn) submitBtn.click();
+    })()
+  `);
+  await sleep(1500);
+}
+
+async function captureScreenAtBothSizes(session, baseName) {
+  for (const width of [360, 1280]) {
+    const height = width === 360 ? 800 : 900;
+    await session.setViewport(width, height);
+    await sleep(400);
+    await session.captureScreenshot(`${baseName}-${width}px.png`);
+  }
+}
+
+async function complete2FaEnrollment(session) {
+  // Extract secret from page (.font-mono element)
+  await waitForSelector(session, ".font-mono");
+  const secret = await session.eval(`document.querySelector(".font-mono").textContent.trim()`);
+  console.log(`Extracted TOTP secret for setup: ${secret}`);
+
+  const totpCode = getTotpCode(secret);
+  console.log(`Calculated TOTP code: ${totpCode}`);
+
+  await session.eval(`
+    (() => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+      const codeInput = document.querySelector('input[type="text"]');
+      setter.call(codeInput, ${JSON.stringify(totpCode)});
+      codeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      codeInput.dispatchEvent(new Event("change", { bubbles: true }));
+      const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Verify'));
+      if (btn) btn.click();
+    })()
+  `);
+
+  await sleep(1500);
+
+  // Check confirmation checkbox
+  await waitForSelector(session, "#recovery-confirmed");
+  await sleep(500);
+  await session.eval(`
+    (() => {
+      const cb = document.getElementById('recovery-confirmed');
+      if (cb && !cb.checked) {
+        cb.click();
+      }
+    })()
+  `);
+  await sleep(500);
+  await session.eval(`
+    (() => {
+      const finishBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Continue'));
+      if (finishBtn) finishBtn.click();
+    })()
+  `);
+  await sleep(1500);
 }
 
 async function main() {
@@ -136,40 +259,88 @@ async function main() {
     await pageSession.send("Page.enable");
     await pageSession.send("DOM.enable");
     await pageSession.send("Runtime.enable");
+    await pageSession.send("Network.enable");
 
-    for (const screen of SCREENS) {
-      for (const width of [360, 1280]) {
-        const height = width === 360 ? 800 : 900;
-        console.log(`Capturing ${screen.name} at ${width}px...`);
-
-        await pageSession.send("Emulation.setDeviceMetricsOverride", {
-          width,
-          height,
-          deviceScaleFactor: 1,
-          mobile: width === 360,
-        });
-
-        const targetUrl = `http://127.0.0.1:5173${screen.path}`;
-        await pageSession.send("Page.navigate", { url: targetUrl });
-
-        const ready = await waitForReact(pageSession);
-        if (!ready) {
-          console.warn(`Warning: React did not report content for ${screen.name} within timeout`);
+    pageSession.ws.on("message", (raw) => {
+      const msg = JSON.parse(raw);
+      if (msg.method === "Network.requestWillBeSent") {
+        const { url, method } = msg.params.request;
+        if (url.includes("/auth/") || url.includes(":8000")) {
+          const frames = msg.params.initiator?.stack?.callFrames || [];
+          console.log(`[REQ ${method}] ${url}`, frames.slice(0, 3).map(f => `${f.url}:${f.lineNumber}:${f.functionName}`));
         }
-        // Small extra pause for SVG / fonts / animations
-        await sleep(500);
-
-        const { data } = await pageSession.send("Page.captureScreenshot", {
-          format: "png",
-        });
-
-        const filePath = path.join(OUT_DIR, `${screen.name}-${width}px.png`);
-        fs.writeFileSync(filePath, Buffer.from(data, "base64"));
-        console.log(`Saved: ${filePath} (${fs.statSync(filePath).size} bytes)`);
       }
-    }
+      if (msg.method === "Network.responseReceived") {
+        const { url, status, statusText } = msg.params.response;
+        if (url.includes("/auth/") || url.includes(":8000") || status >= 400) {
+          console.log(`[HTTP ${status} ${statusText}] ${url}`);
+        }
+      }
+    });
+
+    // 1. Public Screens: Login, Register, Forbidden
+    console.log("\n--- Capturing Public Screens ---");
+    await pageSession.clearStorage();
+    await pageSession.send("Page.navigate", { url: "http://127.0.0.1:5173/login" });
+    await waitForReact(pageSession);
+    await captureScreenAtBothSizes(pageSession, "login");
+
+    await pageSession.send("Page.navigate", { url: "http://127.0.0.1:5173/register" });
+    await waitForReact(pageSession);
+    await captureScreenAtBothSizes(pageSession, "register");
+
+    await pageSession.send("Page.navigate", { url: "http://127.0.0.1:5173/forbidden" });
+    await waitForReact(pageSession);
+    await captureScreenAtBothSizes(pageSession, "forbidden");
+
+    // 2. Patient Screen: demo.patient@oncolink.local
+    console.log("\n--- Logging in as Patient ---");
+    await pageSession.clearStorage();
+    await loginAs(pageSession, "demo.patient@oncolink.local", "Patient#Sec2026!P");
+    await waitForSelector(pageSession, "nav");
+    await captureScreenAtBothSizes(pageSession, "patient-home");
+
+    // 3. Screener Screen: demo.screener@oncolink.local
+    console.log("\n--- Logging in as Screener ---");
+    await pageSession.clearStorage();
+    await loginAs(pageSession, "demo.screener@oncolink.local", "Screener#Sec2026!S");
+    await waitForSelector(pageSession, "nav");
+    await captureScreenAtBothSizes(pageSession, "screener-home");
+
+    // 4. Coordinator Screen: demo.coordinator@oncolink.local
+    console.log("\n--- Logging in as Hospital Coordinator ---");
+    await pageSession.clearStorage();
+    await loginAs(pageSession, "demo.coordinator@oncolink.local", "Coord#Sec2026!C");
+    await waitForSelector(pageSession, "nav");
+    await captureScreenAtBothSizes(pageSession, "coordinator-home");
+
+    // 5. 2FA Setup Screen & Doctor Home: demo.doctor@oncolink.local
+    console.log("\n--- Logging in as Doctor (Unenrolled -> 2FA Setup) ---");
+    await pageSession.clearStorage();
+    await loginAs(pageSession, "demo.doctor@oncolink.local", "Doctor#Sec2026!D");
+    await waitForSelector(pageSession, "svg"); // QR code svg
+    console.log("Capturing real 2FA setup screen...");
+    await captureScreenAtBothSizes(pageSession, "2fa-setup");
+
+    console.log("Completing 2FA enrollment for Doctor...");
+    await complete2FaEnrollment(pageSession);
+    await waitForSelector(pageSession, "nav");
+    console.log("Capturing Doctor Home...");
+    await captureScreenAtBothSizes(pageSession, "doctor-home");
+
+    // 6. Admin Screen: demo.admin@oncolink.local
+    console.log("\n--- Logging in as Admin (Unenrolled -> 2FA Setup -> Admin Dashboard) ---");
+    await pageSession.clearStorage();
+    await loginAs(pageSession, "demo.admin@oncolink.local", "Admin#Sec2026!A");
+    await waitForSelector(pageSession, "svg");
+    console.log("Completing 2FA enrollment for Admin...");
+    await complete2FaEnrollment(pageSession);
+    await waitForSelector(pageSession, "table");
+    console.log("Capturing Admin Console with live MongoDB user table...");
+    await captureScreenAtBothSizes(pageSession, "admin");
 
     pageSession.close();
+    console.log("\nAll real screenshots captured successfully!");
   } finally {
     chromeProc.kill("SIGKILL");
     console.log("Chrome stopped.");
@@ -177,6 +348,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Error capturing screenshots:", err);
+  console.error("Error capturing real screenshots:", err);
   process.exit(1);
 });

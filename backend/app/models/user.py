@@ -1,7 +1,13 @@
 from datetime import datetime
 from enum import Enum
 
+import email_validator
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+if "local" in email_validator.SPECIAL_USE_DOMAIN_NAMES:
+    email_validator.SPECIAL_USE_DOMAIN_NAMES = [
+        d for d in email_validator.SPECIAL_USE_DOMAIN_NAMES if d != "local"
+    ]
 
 
 class UserRole(str, Enum):

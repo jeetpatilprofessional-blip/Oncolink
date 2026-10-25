@@ -39,7 +39,11 @@ export const LoginPage: React.FC = () => {
       const res = await login(email.trim(), password);
       if (res.requires_2fa && res.temp_token) {
         setTempToken(res.temp_token);
-        setStep(2);
+        if (res.totp_enrolled === false) {
+          navigate("/2fa/setup", { state: { temp_token: res.temp_token } });
+        } else {
+          setStep(2);
+        }
       } else {
         redirectAfterLogin();
       }

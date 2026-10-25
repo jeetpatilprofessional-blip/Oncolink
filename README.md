@@ -71,11 +71,19 @@ Generate strong random secrets before deployment using the following commands:
 
 ## Administrator Account Provisioning
 
-To create a real (non-demo) production administrator account:
+To create a real (non-demo) production administrator account, run the command **without `-T`** to allow interactive terminal input for the hidden password prompt:
 ```powershell
-docker compose exec -T backend python -m app.cli create-admin admin@hospital.org
+docker compose exec backend python -m app.cli create-admin admin@hospital.org
 ```
-*(The command prompts for a hidden password, enforces password complexity rules, rejects duplicate emails, marks the account as non-demo `is_demo: false`, mandates TOTP setup on first sign-in, and writes an immutable audit record).*
+*(The command allocates an interactive TTY, prompts for a hidden password, enforces password complexity rules, rejects duplicate emails, marks the account as non-demo `is_demo: false`, mandates TOTP setup on first sign-in, and writes an immutable audit record. Never include `-T` as it disables the interactive password prompt).*
+
+---
+
+## Accessing the Application
+
+> [!IMPORTANT]
+> The web application **must** be opened at **`http://127.0.0.1:5173`** (never `localhost:5173`).
+> `127.0.0.1` and `localhost` are treated as separate origins by browsers; accessing via `localhost` breaks the `SameSite=Strict` refresh token cookie and triggers CORS rejection from the backend.
 
 ---
 

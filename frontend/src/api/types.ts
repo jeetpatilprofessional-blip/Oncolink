@@ -23,6 +23,7 @@ export interface LoginResponse {
   token_type?: string;
   requires_2fa?: boolean;
   temp_token?: string;
+  totp_enrolled?: boolean;
 }
 
 export interface ConsentCurrentResponse {

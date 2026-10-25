@@ -1,6 +1,12 @@
 from datetime import datetime
 
+import email_validator
 from pydantic import BaseModel, ConfigDict, EmailStr
+
+if "local" in email_validator.SPECIAL_USE_DOMAIN_NAMES:
+    email_validator.SPECIAL_USE_DOMAIN_NAMES = [
+        d for d in email_validator.SPECIAL_USE_DOMAIN_NAMES if d != "local"
+    ]
 
 
 class LoginRequest(BaseModel):
@@ -37,6 +43,7 @@ class TokenResponse(BaseModel):
     role: str
     requires_2fa: bool = False
     temp_token: str | None = None
+    totp_enrolled: bool = True
 
 
 class TokenPayload(BaseModel):
