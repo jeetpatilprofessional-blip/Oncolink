@@ -172,7 +172,7 @@ Every call screen shows an emergency banner and the doctor's registration number
 |---|---|
 | `users` | Accounts, role, verification status, registration number |
 | `consents` | Version, language, timestamp, captured-by |
-| `patients` | Profile, age, contact, language, risk flags |
+| `patients` | Profile, age/DOB, contact, language, risk flags, erasure requests |
 | `cases` | Status, urgency, assignee, status history |
 | `case_history` | Structured questionnaire answers |
 | `images` | Site, quality scores, storage reference |
@@ -187,13 +187,13 @@ Every call screen shows an emergency banner and the doctor's registration number
 
 ## 14. Main API endpoints
 
-- Auth and consent: `POST /auth/login`, `POST /consent`, `DELETE /me/data`
-- Cases: `POST /cases`, `POST /cases/{id}/images`, `GET /queue`, `POST /cases/{id}/retake`, `POST /cases/{id}/review`, `POST /cases/{id}/sign`
+- Auth and consent: `POST /auth/register`, `POST /auth/login`, `POST /auth/2fa/login`, `POST /auth/2fa/setup`, `POST /auth/2fa/verify-setup`, `GET /auth/me`, `POST /auth/refresh`, `POST /auth/logout`, `GET /consent/current`, `POST /consent`, `DELETE /me/data`, `POST /patients/{id}/erasure-request`
+- Cases: `POST /cases`, `GET /cases`, `GET /cases/{id}`, `POST /cases/{id}/images`, `GET /cases/{id}/images/{image_id}`, `GET /cases/{id}/heatmap`, `POST /cases/{id}/history`, `POST /cases/{id}/submit`, `POST /cases/{id}/cancel`, `GET /queue`, `POST /cases/{id}/claim`, `POST /cases/{id}/release`, `POST /cases/{id}/retake`, `POST /cases/{id}/second-opinion`, `POST /cases/{id}/review`, `POST /cases/{id}/sign`, `GET /cases/{id}/timeline`, `GET /reports/{id}`
 - AI: `POST /cases/{id}/analyze`, `GET /models/current`
 - Hospitals: `GET /hospitals/search`, `GET /hospitals/{id}/slots`, `POST /slots/{id}/hold`
-- Referrals: `POST /referrals`, `PATCH /referrals/{id}/status`, `POST /appointments`, `POST /appointments/{id}/outcome`
-- Communication: `POST /webhooks/whatsapp`, `POST /consults/{id}/video-room`, `POST /consults/{id}/masked-call`
-- Admin: `POST /admin/verify/{id}`, `GET /admin/analytics`, `POST /admin/reset-demo`
+- Referrals and appointments: `POST /referrals`, `GET /referrals`, `GET /referrals/{id}`, `GET /referrals/{id}/packet`, `PATCH /referrals/{id}/status`, `POST /appointments`, `POST /appointments/{id}/confirm`, `POST /appointments/{id}/cancel`, `POST /appointments/{id}/reschedule-request`, `POST /appointments/{id}/attendance`, `POST /appointments/{id}/outcome`
+- Communication: `POST /webhooks/whatsapp`, `POST /consults/{case_id}/video-room`, `POST /consults/{case_id}/masked-call`
+- Admin: `POST /admin/users`, `GET /admin/users`, `POST /admin/doctors/{id}/verify`, `POST /admin/hospitals`, `PATCH /admin/users/{id}/hospital`, `POST /admin/hospitals/{id}/verify`, `POST /admin/users/{id}/deactivate`, `POST /admin/patients/{id}/erase`, `GET /admin/audit-logs`, `GET /admin/analytics`, `POST /admin/reset-demo`
 
 ## 15. Tech stack
 
