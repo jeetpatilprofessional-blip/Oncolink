@@ -142,5 +142,27 @@ This document records authoritative technical and architectural decisions for th
   2. **Heuristic Calibration Caveat:** The current quality gate thresholds (`BLUR_LAPLACIAN_VAR_MIN = 100.0`, `BRIGHTNESS_MEAN_MIN = 40.0`, `BRIGHTNESS_MEAN_MAX = 220.0`, `DETAIL_STD_DEV_MIN = 20.0`, etc.) are untuned engineering heuristics designed for prototype integrity. They require rigorous empirical calibration against real-world clinical smartphone photography across varied lighting and device camera sensors before operational deployment.
   3. **English-Only Consent Constraint:** Informed consent text (`backend/app/consent_texts/v1.txt`) is currently authored exclusively in English. Prior to any live field screening deployment, the consent disclosure must be professionally translated into local regional languages (e.g. Hindi, Marathi, Kannada) and vetted by institutional ethics review boards (IRB/IEC).
 
+## Decision 19: ML Data Preparation, Dual-Pass Duplicate Grouping, and Image Metadata Bias Flag
+
+* **Decision:**
+  1. **Dataset Role Partitioning:**
+     - `mendeley_karnataka` (original data only, 323 images) forms `role=train_pool`. The 2,270 pre-augmented images (`augmented_data/`) are strictly excluded from all manifests, hashes, and splits.
+     - `kaggle_oral_cancer` (103 retained images after duplicate resolution) forms `role=external_test` only. It is strictly quarantined and never used for model training, validation, hyperparameter tuning, temperature scaling calibration, or classification threshold selection.
+  2. **Kaggle Conflict & Duplicate Resolution:**
+     - Conflicting label duplicate groups (specifically `1366.fig.1.png` duplicated under `cancer` and `non-cancer`) have all copies permanently removed (2 images).
+     - Consistent exact-duplicate groups are collapsed to a single canonical representative image, with 26 redundant copies removed. All 28 exclusions are tracked in `ml/reports/exclusions.json`.
+  3. **Dual-Pass Near-Duplicate Grouping:**
+     - **Pass 1:** Perceptual hashing (pHash) with Hamming distance <= 10 identified 1 near-duplicate pair (`125.jpg` and `91.jpg` in malignant lesions, Hamming distance 8).
+     - **Pass 2:** Frozen pretrained EfficientNet-B0 embedding cosine similarity with threshold $\tau = 0.88$ (justified by being in the top 0.01% tail of the pairwise score distribution, $> 4.5$ standard deviations above the mean of 0.4333, and p99.99 = 0.8683). Pass 2 identified 7 extra near-duplicate groups (8 total multi-item groups) capturing series of reframed/cropped lesions (e.g., photos 83–89 paired with 102–134 in benign lesions, and 110/119 in malignant lesions) that whole-image DCT pHash failed to link.
+     - Connected components group whole duplicate clusters into unified `duplicate_group` identifiers.
+  4. **Leakage-Free Stratified Group Splitting:**
+     - From `train_pool` only, a held-out internal test set of 64 images (19.8%) is set aside, stratified by label (`benign_appearing` vs `suspicious_for_malignancy`), keeping whole duplicate groups strictly intact.
+     - The remaining 259 images are split via 5-fold `StratifiedGroupKFold` (seed 42), guaranteeing zero duplicate group splitting between train and validation partitions.
+     - An automated leakage verification gate confirms pairwise partition disjointness and zero overlap between `train_pool` and `external_test`. Tracked in `ml/data/splits.json` and `ml/data/splits.sha256`.
+  5. **Critical Finding: Image Metadata Acquisition Bias:**
+     - Cross-validated logistic regression on image metadata alone (`width`, `height`, `aspect_ratio`, `file_size`, `bytes_per_pixel`) achieves an **AUC of 0.7774 (95% CI: [0.7165, 0.8313])**, substantially and statistically significantly above chance (0.50).
+     - **Implication:** Raw image labels strongly correlate with acquisition hardware, image dimensions, and JPEG compression ratios rather than oral mucosal pathology alone. Any model trained on raw unstandardized images risks learning these non-clinical file shortcuts. All future modeling must rigorously evaluate and report metadata correlation.
+
+
 
 

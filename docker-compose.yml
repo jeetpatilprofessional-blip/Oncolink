@@ -145,6 +145,19 @@ services:
       backend:
         condition: service_healthy
 
+  ml:
+    profiles: ["ml"]
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    container_name: oncolink-ml
+    volumes:
+      - ./ml:/app/ml
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TORCH_HOME=/app/ml/.cache/torch
+
 volumes:
   mongo_data:
     name: oncolink_mongo_data

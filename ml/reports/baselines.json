@@ -1,0 +1,95 @@
+{
+  "metadata_bias_flag": {
+    "above_chance": true,
+    "significance": "CRITICAL: Image file properties (width, height, aspect ratio, file size, bytes per pixel) correlate strongly with clinical labels, achieving AUC substantially above 0.50. This indicates acquisition/selection bias in the source dataset."
+  },
+  "dataset_summary": {
+    "evaluation_pool": "mendeley_karnataka (80% train_pool, held-out 20% test isolated)",
+    "total_images": 259,
+    "folds": 5,
+    "bootstrap_iterations": 1000,
+    "confidence_level": 0.95
+  },
+  "baselines": {
+    "majority_class": {
+      "auc": {
+        "point": 0.477,
+        "ci_95": [
+          0.407,
+          0.547
+        ]
+      },
+      "sensitivity": {
+        "point": 0.189,
+        "ci_95": [
+          0.1194,
+          0.25
+        ]
+      },
+      "specificity": {
+        "point": 0.7803,
+        "ci_95": [
+          0.7049,
+          0.856
+        ]
+      }
+    },
+    "metadata_only": {
+      "features": [
+        "width",
+        "height",
+        "aspect_ratio",
+        "file_size",
+        "bytes_per_pixel"
+      ],
+      "above_chance": true,
+      "auc": {
+        "point": 0.7774,
+        "ci_95": [
+          0.7165,
+          0.8313
+        ]
+      },
+      "sensitivity": {
+        "point": 0.6772,
+        "ci_95": [
+          0.5948,
+          0.7652
+        ]
+      },
+      "specificity": {
+        "point": 0.7045,
+        "ci_95": [
+          0.6222,
+          0.7812
+        ]
+      }
+    },
+    "frozen_efficientnet_b0": {
+      "model": "efficientnet_b0",
+      "weights_url": "https://download.pytorch.org/models/efficientnet_b0_rwightman-7f5810bc.pth",
+      "weights_sha256": "7f5810bc96def8f7552d5b7e68d53c4786f81167d28291b21c0d90e1fca14934",
+      "auc": {
+        "point": 0.8803,
+        "ci_95": [
+          0.8358,
+          0.9205
+        ]
+      },
+      "sensitivity": {
+        "point": 0.8031,
+        "ci_95": [
+          0.7297,
+          0.8647
+        ]
+      },
+      "specificity": {
+        "point": 0.803,
+        "ci_95": [
+          0.728,
+          0.871
+        ]
+      }
+    }
+  }
+}

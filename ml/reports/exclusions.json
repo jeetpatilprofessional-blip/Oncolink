@@ -1,0 +1,151 @@
+{
+  "summary": {
+    "raw_kaggle_total": 131,
+    "conflicting_label_removals": 2,
+    "exact_duplicate_collapsed": 26,
+    "total_excluded": 28,
+    "retained_external_test": 103
+  },
+  "exclusions": [
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_oral-leukoplakia-br-image-credit-dermnet-new-zealand-br.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/oral-leukoplakia-br-image-credit-dermnet-new-zealand-br.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/non-cancer/_tongue.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/non-cancer/35556-m.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_cancer 6.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/cancer 6.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_41415_2000_Article_BF4800481_Fig1_HTML.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/41415_2000_Article_BF4800481_Fig1_HTML.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_squamous-cell-carinoma-of-the-tongue.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/squamous-cell-carinoma-of-the-tongue.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_Oral-cancer-Courtesy-of-Professor-Jan-Zapa1a-Chair-of-Cranio-Maxillofacial.png",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/Oral-cancer-Courtesy-of-Professor-Jan-Zapa1a-Chair-of-Cranio-Maxillofacial.png; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_pract_oral_cancer.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/pract_oral_cancer.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_figure1.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/figure1.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_oral-cancer-screening.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/oral-cancer-screening.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_Carcinomaoftherighttongue_OCT-20161108085557163.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/Carcinomaoftherighttongue_OCT-20161108085557163.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_3-s2.0-B9780443100734500148-f10-07-9780443100734.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/3-s2.0-B9780443100734500148-f10-07-9780443100734.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_1200px-ZungenCa2a.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/1200px-ZungenCa2a.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_1200px-ZungenCa2a (1).jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/1200px-ZungenCa2a.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_base-of-tongue-cancer-symptoms.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/base-of-tongue-cancer-symptoms.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_oral-cancer__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDIwXQ.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/oral-cancer__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDIwXQ.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/f063-001a-9781416025276.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/images (3).jpeg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_SRMJResDentSci_2013_4_1_35_116830_u1.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/SRMJResDentSci_2013_4_1_35_116830_u1.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_Tongue-cancer-symptoms.png",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/Tongue-cancer-symptoms.png; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_mouth-cancer-symptoms-1.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/mouth-cancer-symptoms-1.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/Lower_lip_cancer.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/download (2).jpeg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_mouth-photo-4.png",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/mouth-photo-4.png; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_mouth-photo-3.png",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/mouth-photo-3.png; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/mouth-cancer.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/images (5).jpeg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_1366.fig.1.png",
+      "reason": "conflicting_label_in_duplicate_group",
+      "details": "pHash f5b6c218d8b90877 identical match contains conflicting labels ['cancer', 'non-cancer'] across copies. Entire group excluded."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/non-cancer/1366.fig.1.png",
+      "reason": "conflicting_label_in_duplicate_group",
+      "details": "pHash f5b6c218d8b90877 identical match contains conflicting labels ['cancer', 'non-cancer'] across copies. Entire group excluded."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_41457tn.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/41457tn.jpg; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_oral-cancer-treatment-500x500.png",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/oral-cancer-treatment-500x500.png; collapsed to single representative."
+    },
+    {
+      "path": "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_oral-cancer-by-j-shah-33-728.jpg",
+      "reason": "exact_duplicate_in_kaggle",
+      "details": "Exact pHash duplicate of canonical image ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/oral-cancer-by-j-shah-33-728.jpg; collapsed to single representative."
+    }
+  ]
+}

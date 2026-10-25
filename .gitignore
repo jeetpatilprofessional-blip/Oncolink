@@ -53,7 +53,12 @@ tmp-photos/
 mongo_data/
 minio_data/
 
-# Machine learning data and model artifacts (ignore binary images, weights, archives)
+# Machine learning data and model artifacts (ignore binary images, weights, archives, manifest CSV)
+ml/data/manifest.csv
+ml/.cache/
+ml/weights/
+*.pth
+*.pt
 ml/data/raw/**/*.jpg
 ml/data/raw/**/*.jpeg
 ml/data/raw/**/*.png
