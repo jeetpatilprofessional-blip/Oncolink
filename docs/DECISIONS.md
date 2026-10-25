@@ -21,8 +21,13 @@ This document records authoritative technical and architectural decisions for th
 
 ## Decision 3: AI Prediction Classes vs. Biopsy Outcome Categories
 
-* **Decision:** AI prediction classes and Biopsy outcome categories are implemented as separate, dedicated enums.
-* **Rationale:** AI triage assists a doctor prior to clinical examination (classes: `normal_or_benign`, `potentially_malignant`, `suspicious_for_cancer`, `uncertain`), whereas histopathological biopsy establishes definitive tissue diagnosis (categories: `benign`, `potentially_malignant`, `malignant`, `inconclusive`). Keeping these enums distinct prevents confusing screening hypotheses with histopathological truth.
+* **Decision:** AI prediction classes and Biopsy outcome categories are implemented as separate, dedicated concepts.
+  - **Version 1 AI Triage Classes (Docs Only):** `benign_appearing` and `suspicious_for_malignancy`, plus the `uncertain` output (below calibrated confidence threshold).
+  - The class `potentially_malignant` (oral potentially malignant disorders / OPMD, such as leukoplakia, erythroplakia) is deferred as future work pending access to datasets with differentiated OPMD annotations (such as the SMART dataset).
+  - Normal-mouth photos (healthy mucosa without visible lesions) are out of distribution; the model runs strictly on cases presenting a lesion close-up.
+  - Kaggle 'non-cancer' and Mendeley 'benign' are assumed equivalent for version 1 training, and this equivalence is unverified.
+  - **Biopsy Outcome Categories:** `benign`, `potentially_malignant`, `malignant`, `inconclusive`.
+* **Rationale:** AI triage assists a doctor prior to clinical examination, whereas histopathological biopsy establishes definitive tissue diagnosis. Keeping these categories distinct prevents confusing screening hypotheses with histopathological truth. Restricting version 1 classes to `benign_appearing` and `suspicious_for_malignancy` prevents hallucinating OPMD subdivisions that the current binary training sets do not support.
 
 ## Decision 4: Dual-Stage Quality Feedback
 
@@ -121,4 +126,13 @@ This document records authoritative technical and architectural decisions for th
   4. **Field Screener Intake & In-Person Consent:** Community screeners can register unauthenticated participants (`user_id = null`) through a dedicated two-step intake flow. Step 1 validates date of birth client-side, blocking participants under 18 with a localized error message without making any network calls. Step 2 presents the research consent agreement and records `captured_by = screener.id` via `POST /consent` before initializing the case draft. A session ledger table displays all cases screened during the session with live status markers.
   5. **Review Preconditions & Retake Flow:** The review screen renders a dynamic preconditions checklist matching the backend's 422 `missing_items` list (`active_consent`, `case_history`, `lesion_closeup_image`, `context_images`). Post-submission, emergency alerts are displayed for red-flag cases, and any photos failing the authoritative quality gate are listed with their localized reason codes and a direct "Retake photo" action returning to the capture flow.
   6. **Design System & Accessibility Standards:** All user-facing text is localized in `locales/en.json`. Monospace font families are prohibited for labels and data values (reserved only for technical diagnostics). Triage colors are reserved exclusively for clinical urgency. All interactive elements respect `prefers-reduced-motion` (the only animation is the subtle 150ms site map region fill transition). Automated axe-core checks confirm zero accessibility violations across all screens.
+
+## Decision 17: Dataset Splitting Limitations & Duplicate Leakage Control
+
+* **Decision:**
+  1. **Absence of Patient Identifiers:** Rigorous programmatic search across raw files and directory hierarchies of both training datasets (`mendeley_karnataka` and `kaggle_oral_cancer`) confirms that zero patient or case identifiers exist in the source data.
+  2. **Removal of Patient-Isolated Splits Assumption:** The previous assumption of strict patient-level / patient-isolated splitting is retracted as impossible with the current datasets.
+  3. **Near-Duplicate Group Grouping Invariant:** Exact and near-duplicate image groups (identified by perceptual hashing / pHash) must always be assigned together to a single partition (train, validation, or test). Under no circumstances may duplicate or near-duplicate variants of an image be split across training and evaluation splits.
+  4. **Optimistic Evaluation Caveat:** Because different lesion photos from the same patient may exist in the raw datasets without matching perceptual hashes, cross-validation and test set performance metrics may still be optimistic despite duplicate grouping. All reported metrics must explicitly note this limitation.
+
 

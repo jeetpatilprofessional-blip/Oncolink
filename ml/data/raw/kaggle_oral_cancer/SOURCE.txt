@@ -5,53 +5,50 @@ ONCOLINK DATASET PROVENANCE RECORD: KAGGLE ORAL CANCER (LIPS & TONGUE)
 1. DATASET OVERVIEW
 -------------------
 Dataset Name: Oral Cancer (Lips and Tongue) Images Dataset
-Collection Scope: Clinical photographs focusing on oral squamous cell carcinoma (OSCC) and benign oral presentations of the lips and tongue.
-Repository Platform: Kaggle
+Repository Platform: Kaggle (shivam17299/oral-cancer-lips-and-tongue-images)
 URL: https://www.kaggle.com/datasets/shivam17299/oral-cancer-lips-and-tongue-images
+Collection Scope: UNVERIFIED
 
 2. CITATION & CONTRIBUTORS
 --------------------------
-Primary Creators / Uploader:
-  - Shivam Bharuka (Kaggle: @shivam17299)
-  - Prakrut S.
-
-Origin / Clinical Sources:
-  - Collected in clinical collaboration with ENT and oncology departments (including Ahmedabad, Gujarat, India) and clinical photography repositories.
-
-Suggested Citation:
-  Bharuka, S., & Prakrut, S. "Oral Cancer (Lips and Tongue) Images".
-  Kaggle Dataset, https://www.kaggle.com/datasets/shivam17299/oral-cancer-lips-and-tongue-images.
+Primary Creators / Uploader: UNVERIFIED
+Origin / Clinical Sources: UNVERIFIED
+Suggested Citation: UNVERIFIED
 
 3. LICENSE & PERMISSIONS
 ------------------------
-License / Access: Open Access / Kaggle Platform Community Use
-Usage Terms: Open for academic, non-commercial, and machine learning research benchmarking.
-Attribution: Attribution to original creators and Kaggle repository source.
+License: UNVERIFIED (web page license text not provided; 'Open Access / Kaggle Platform Community Use' removed as invalid license specification)
+Usage Terms: UNVERIFIED
+Attribution: UNVERIFIED
 
 4. CLINICAL CAPTURE DETAILS & GROUND TRUTH
 ------------------------------------------
-Capture Hardware:
-  - Consumer digital cameras, mobile smartphones, and clinical documentation photography
-Anatomical Sites:
-  - Lips (upper and lower labial mucosa, vermilion border)
-  - Tongue (dorsal, lateral borders, ventral surface)
-Diagnostic Ground Truth:
-  - Binary classification:
-    * `cancer`: Oral squamous cell carcinoma / biopsy-confirmed malignancy
-    * `non-cancer`: Normal oral mucosa, benign aphthous ulcers, traumatic keratosis, benign tongue conditions
+Capture Hardware: UNVERIFIED
+Clinical Environment: UNVERIFIED
+Anatomical Sites: UNVERIFIED (title indicates Lips and Tongue; individual site metadata absent)
+Patient Identifiers: NONE FOUND (zero patient/case identifiers in filenames or directory structure)
+Diagnostic Ground Truth: UNVERIFIED (labels 'cancer' and 'non-cancer' exist only as folder names; clinical verification or histopathology confirmation is UNVERIFIED; duplicate analysis reveals severe labeling conflicts where identical images exist under conflicting labels)
 
-5. FOLDER STRUCTURE & IMAGE COUNTS
-----------------------------------
+5. VERIFIED FOLDER STRUCTURE & IMAGE COUNTS
+-------------------------------------------
 Folder: OralCancer/
-  ├── cancer/                     : 87 images (.jpg, .jpeg, .png)
-  └── non-cancer/                 : 44 images (.jpg, .jpeg, .png)
+  ├── cancer/                     : 87 images (.jpg, .jpeg, .png) [VERIFIED]
+  └── non-cancer/                 : 44 images (.jpg, .jpeg, .png) [VERIFIED]
 
-Total Files in Repository: 131 images
+Total Files in Repository: 131 images [VERIFIED]
+Corrupt / Unreadable Files: 0 [VERIFIED - all 131 images decode cleanly]
+
+Duplicate Analysis (pHash):
+- 26 exact duplicate clusters (28 duplicate pairs) identified within this dataset.
+- 1 cluster exhibits conflicting labels:
+    * `ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_1366.fig.1.png` (cancer)
+    * `ml/data/raw/kaggle_oral_cancer/OralCancer/non-cancer/1366.fig.1.png` (non-cancer)
+- 21 pairs represent identical images duplicated with a `dataset_` prefix.
 
 6. ONCOLINK USAGE & CLINICAL NOTES
 ----------------------------------
-- Per ONCOLINK SPEC Section 6, this dataset serves as an outside-image benchmark / validation cohort to test model generalization across distinct cameras, illumination setups, and clinical sites.
-- SPEC Section 6 Requirement: Report internal test results and outside-image results separately, as performance on outside image distributions is typically lower.
-- Class Imbalance: 87 cancer vs 44 non-cancer. Metric evaluation should focus on Sensitivity / Recall, Specificity, AUROC, and class-balanced thresholds.
+- Normal-mouth photos are out of distribution; model v1 runs strictly on cases presenting a lesion close-up.
+- Kaggle 'non-cancer' and Mendeley 'benign' are assumed equivalent for version 1 training; this equivalence is unverified.
+- Patient-level splitting is impossible for this dataset due to absence of patient identifiers; near-duplicate groups must remain within the same split, and evaluation results may remain optimistic.
 - Intended Use Notice: Prototype research and triage development only. Not approved for autonomous clinical diagnosis.
 ================================================================================

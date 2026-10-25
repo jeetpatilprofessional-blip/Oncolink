@@ -1,6 +1,7 @@
 import hashlib
 import io
 import secrets
+import warnings
 from datetime import UTC, datetime
 from typing import Any
 
@@ -122,19 +123,21 @@ class ImageService:
 
         # 3. Decompression bomb check & decode
         try:
-            with Image.open(io.BytesIO(raw_bytes)) as pil_img:
-                if (pil_img.width * pil_img.height) > MAX_IMAGE_PIXELS:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Image resolution exceeds decompression bomb threshold (maximum 25 megapixels).",
-                    )
-                # 4. Re-encode image: convert to RGB and write fresh JPEG buffer (strips all EXIF/GPS)
-                rgb_img = pil_img.convert("RGB")
-                out_buffer = io.BytesIO()
-                rgb_img.save(out_buffer, format="JPEG", quality=90, optimize=True)
-                reencoded_bytes = out_buffer.getvalue()
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                with Image.open(io.BytesIO(raw_bytes)) as pil_img:
+                    if (pil_img.width * pil_img.height) > MAX_IMAGE_PIXELS:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Image resolution exceeds decompression bomb threshold (maximum 25 megapixels).",
+                        )
+                    # 4. Re-encode image: convert to RGB and write fresh JPEG buffer (strips all EXIF/GPS)
+                    rgb_img = pil_img.convert("RGB")
+                    out_buffer = io.BytesIO()
+                    rgb_img.save(out_buffer, format="JPEG", quality=90, optimize=True)
+                    reencoded_bytes = out_buffer.getvalue()
 
-        except Image.DecompressionBombError as exc:
+        except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Image rejected as decompression bomb: {exc}",

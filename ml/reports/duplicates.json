@@ -1,0 +1,195 @@
+{
+  "exact_duplicates": [
+    {
+      "hash": "c0dbc4d71b5e4466",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/1200px-ZungenCa2a.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_1200px-ZungenCa2a (1).jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_1200px-ZungenCa2a.jpg"
+      ]
+    },
+    {
+      "hash": "bf3fb4c49059c84c",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/3-s2.0-B9780443100734500148-f10-07-9780443100734.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_3-s2.0-B9780443100734500148-f10-07-9780443100734.jpg"
+      ]
+    },
+    {
+      "hash": "8b1660ee679b1636",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/41415_2000_Article_BF4800481_Fig1_HTML.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_41415_2000_Article_BF4800481_Fig1_HTML.jpg"
+      ]
+    },
+    {
+      "hash": "f752c8e427b8181f",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/41457tn.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_41457tn.jpg"
+      ]
+    },
+    {
+      "hash": "c516f18b87cc0e6d",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/base-of-tongue-cancer-symptoms.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_base-of-tongue-cancer-symptoms.jpg"
+      ]
+    },
+    {
+      "hash": "8a3d2d9f30dc32c6",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/cancer 6.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_cancer 6.jpg"
+      ]
+    },
+    {
+      "hash": "bd34a66bd0745b30",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/Carcinomaoftherighttongue_OCT-20161108085557163.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_Carcinomaoftherighttongue_OCT-20161108085557163.jpg"
+      ]
+    },
+    {
+      "hash": "f5b6c218d8b90877",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_1366.fig.1.png",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/non-cancer/1366.fig.1.png"
+      ]
+    },
+    {
+      "hash": "a4e482f2cdd9d913",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_figure1.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/figure1.jpg"
+      ]
+    },
+    {
+      "hash": "dc34b5189ed198da",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_mouth-cancer-symptoms-1.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/mouth-cancer-symptoms-1.jpg"
+      ]
+    },
+    {
+      "hash": "f15dc3209c18d9db",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_mouth-photo-3.png",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/mouth-photo-3.png"
+      ]
+    },
+    {
+      "hash": "eb4ab73ad02d40b5",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_mouth-photo-4.png",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/mouth-photo-4.png"
+      ]
+    },
+    {
+      "hash": "ff3fc4748152910b",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_oral-cancer-by-j-shah-33-728.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/oral-cancer-by-j-shah-33-728.jpg"
+      ]
+    },
+    {
+      "hash": "9a56053bd6b591ac",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_Oral-cancer-Courtesy-of-Professor-Jan-Zapa1a-Chair-of-Cranio-Maxillofacial.png",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/Oral-cancer-Courtesy-of-Professor-Jan-Zapa1a-Chair-of-Cranio-Maxillofacial.png"
+      ]
+    },
+    {
+      "hash": "ab75e061ca1e8d9c",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_oral-cancer-screening.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/oral-cancer-screening.jpg"
+      ]
+    },
+    {
+      "hash": "fe6b819c85d4d096",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_oral-cancer-treatment-500x500.png",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/oral-cancer-treatment-500x500.png"
+      ]
+    },
+    {
+      "hash": "cadb24692f89ff00",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_oral-cancer__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDIwXQ.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/oral-cancer__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDIwXQ.jpg"
+      ]
+    },
+    {
+      "hash": "80601dde9f829ecf",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_oral-leukoplakia-br-image-credit-dermnet-new-zealand-br.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/oral-leukoplakia-br-image-credit-dermnet-new-zealand-br.jpg"
+      ]
+    },
+    {
+      "hash": "a001ff144d6db39e",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_pract_oral_cancer.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/pract_oral_cancer.jpg"
+      ]
+    },
+    {
+      "hash": "95a09ac7cb5c3173",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_squamous-cell-carinoma-of-the-tongue.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/squamous-cell-carinoma-of-the-tongue.jpg"
+      ]
+    },
+    {
+      "hash": "d4f40ec212dd6763",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_SRMJResDentSci_2013_4_1_35_116830_u1.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/SRMJResDentSci_2013_4_1_35_116830_u1.jpg"
+      ]
+    },
+    {
+      "hash": "daf48793980d6536",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/dataset_Tongue-cancer-symptoms.png",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/Tongue-cancer-symptoms.png"
+      ]
+    },
+    {
+      "hash": "dfaf2d1a27299830",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/download (2).jpeg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/Lower_lip_cancer.jpg"
+      ]
+    },
+    {
+      "hash": "d0bc57c3b03cd236",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/f063-001a-9781416025276.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/images (3).jpeg"
+      ]
+    },
+    {
+      "hash": "f248c1a78fb898b9",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/images (5).jpeg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/cancer/mouth-cancer.jpg"
+      ]
+    },
+    {
+      "hash": "87ab5c8d89c791c6",
+      "files": [
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/non-cancer/35556-m.jpg",
+        "ml/data/raw/kaggle_oral_cancer/OralCancer/non-cancer/_tongue.jpg"
+      ]
+    }
+  ],
+  "near_duplicates": [
+    {
+      "file_1": "ml/data/raw/mendeley_karnataka/Oral Images Dataset/original_data/malignant_lesions/125.jpg",
+      "hash_1": "93d12f186e5b8969",
+      "file_2": "ml/data/raw/mendeley_karnataka/Oral Images Dataset/original_data/malignant_lesions/91.jpg",
+      "hash_2": "93d52798645bcd68"
+    }
+  ]
+}

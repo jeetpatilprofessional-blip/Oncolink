@@ -5,67 +5,54 @@ ONCOLINK DATASET PROVENANCE RECORD: MENDELEY KARNATAKA ORAL IMAGES
 1. DATASET OVERVIEW
 -------------------
 Dataset Name: Oral Images Dataset (Karnataka Oral Lesion Dataset)
-Collection Scope: Clinical color photography of oral mucosal lesions from Karnataka, India.
 Version: 2 (Mendeley Data)
 Repository Platform: Mendeley Data
-Direct DOI / URL: https://doi.org/10.17632/mhjyrn35p4.2 (also indexed as 10.17632/mhjyrn35p4.1)
+DOI / URL: 10.17632/mhjyrn35p4.2 (derived from repository reference; web page text unverified)
+Collection Scope: UNVERIFIED
 
 2. CITATION & CONTRIBUTORS
 --------------------------
-Primary Contributors / Authors:
-  - Chandrashekar H. S.
-  - Geetha Kiran A.
-  - Murali S.
-  - Dinesh M. S.
-  - Nanditha B. R.
-
-Institutions / Collaborating Clinical Sites:
-  - Malnad College of Engineering, Hassan, Karnataka, India
-  - Sri Dharmasthala Manjunatheshwara (SDM) College of Dental Sciences & Hospital, Dharwad, Karnataka, India
-  - Dental and maxillofacial oncology clinics in Karnataka, India
-
-Suggested Citation:
-  Chandrashekar, H.S., Geetha Kiran, A., Murali, S., Dinesh, M.S., & Nanditha, B.R.
-  "Oral Images Dataset", Mendeley Data, V2, doi: 10.17632/mhjyrn35p4.2.
+Primary Contributors / Authors: UNVERIFIED
+Institutions / Collaborating Clinical Sites: UNVERIFIED
+Suggested Citation: UNVERIFIED
 
 3. LICENSE & PERMISSIONS
 ------------------------
-License: Creative Commons Attribution 4.0 International (CC BY 4.0)
-License Terms Summary:
-  You are free to share (copy and redistribute the material in any medium or format)
-  and adapt (remix, transform, and build upon the material for any purpose, even
-  commercially), provided appropriate credit is given and any changes are indicated.
-Full License Text: https://creativecommons.org/licenses/by/4.0/
+License: UNVERIFIED (CC BY 4.0 presumed previously but unverified from source web page text)
+License Terms Summary: UNVERIFIED
+Attribution: UNVERIFIED
 
 4. CLINICAL CAPTURE DETAILS & GROUND TRUTH
 ------------------------------------------
-Capture Hardware:
-  - Standard consumer mobile phone cameras
-  - Intraoral clinical cameras
-Clinical Environment:
-  - Hospital dental clinics and outpatient oncology examination rooms
-Diagnostic Ground Truth:
-  - Clinically diagnosed and/or histopathologically confirmed oral lesions
-  - Categorized by dental and oncological specialists into benign versus malignant oral cavity lesions (predominantly oral squamous cell carcinoma and oral potentially malignant disorders)
+Capture Hardware: UNVERIFIED
+Clinical Environment: UNVERIFIED
+Patient Identifiers: NONE FOUND (all files named sequentially 1.jpg, 2.jpg, etc.; zero patient/case IDs exist)
+Diagnostic Ground Truth: UNVERIFIED (labels 'benign_lesions' and 'malignant_lesions' exist only as folder names; claim of histopathology confirmation removed and marked UNVERIFIED)
 
-5. FOLDER STRUCTURE & IMAGE COUNTS
-----------------------------------
+5. VERIFIED FOLDER STRUCTURE & IMAGE COUNTS
+-------------------------------------------
 Folder: Oral Images Dataset/
   ├── original_data/
-  │   ├── benign_lesions/         : 165 images (.jpg)
-  │   └── malignant_lesions/      : 158 images (.jpg, .jpeg)
-  │   Subtotal Original: 323 clinical photographs
+  │   ├── benign_lesions/         : 165 images (.jpg) [VERIFIED]
+  │   └── malignant_lesions/      : 158 images (.jpg, .jpeg) [VERIFIED]
+  │   Subtotal Original: 323 clinical photographs [VERIFIED]
   │
-  └── augmented_data/
-      ├── augmented_benign/       : 1,155 images (.jpg)
-      └── augmented_malignant/    : 1,115 images (.jpg)
-      Subtotal Augmented: 2,270 images
+  └── augmented_data/ (EXCLUDED from model training and hash analysis)
+      ├── augmented_benign/       : 1,155 images (.jpg) [VERIFIED]
+      └── augmented_malignant/    : 1,115 images (.jpg) [VERIFIED]
+      Subtotal Augmented: 2,270 images [VERIFIED]
 
-Total Files in Repository: 2,593 images
+Total Files in Repository: 2,593 images [VERIFIED]
+Corrupt / Unreadable Files: 0 [VERIFIED - all 323 original images decode cleanly]
+
+Duplicate Analysis (pHash):
+- 0 exact duplicate clusters identified within Mendeley original data.
+- 0 exact duplicate matches with Kaggle dataset.
 
 6. ONCOLINK USAGE & CLINICAL NOTES
 ----------------------------------
-- Per ONCOLINK SPEC Section 6, the model baseline (EfficientNet-B0) is trained on patient-split clinical photographs.
-- Data augmentation applied in `augmented_data` is offline reference; the ONCOLINK ML pipeline should prioritize original data (`original_data/`) and control its own patient-level splits and cross-validation to prevent data leakage.
-- Intended Use Notice: Prototype research and triage development only. Public clinical-photo datasets are small and not representative of all skin tones, mobile sensors, and lighting conditions.
+- Offline augmented folder (`augmented_data/`) is strictly excluded from hash evaluation and model training.
+- Patient-level splitting is impossible for this dataset due to complete absence of patient identifiers; near-duplicate groups must remain within the same split, and reported metrics may still be optimistic.
+- Kaggle 'non-cancer' and Mendeley 'benign' are assumed equivalent for version 1 training; this equivalence is unverified.
+- Intended Use Notice: Prototype research and triage development only.
 ================================================================================
