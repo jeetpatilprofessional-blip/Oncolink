@@ -1,0 +1,71 @@
+{
+  "common": {
+    "intended_use_title": "Intended Use Statement",
+    "intended_use_statement": "ONCOLINK is a research and education prototype. It is not a medical device, does not diagnose cancer, and must not be used for clinical decisions. Only a biopsy can confirm oral cancer. All data comes from public datasets and consenting volunteers.",
+    "system_status": "System Status",
+    "last_checked": "Last checked"
+  },
+  "status": {
+    "urgent": "Urgent",
+    "soon": "Soon",
+    "routine": "Routine",
+    "uncertain": "Uncertain"
+  },
+  "actions": {
+    "take_photo": "Take photo",
+    "retake_photo": "Retake photo",
+    "request_retake": "Request retake",
+    "sign_report": "Sign report",
+    "send_referral": "Send referral",
+    "book_slot": "Book slot",
+    "refresh_health": "Refresh health status",
+    "decline_referral": "Decline referral"
+  },
+  "fields": {
+    "patient_id": "Patient reference",
+    "api_endpoint": "API endpoint",
+    "notes": "Consult notes",
+    "select_site": "Select lesion site"
+  },
+  "errors": {
+    "field_required": "This field is required. Enter a valid value to continue.",
+    "photo_too_dark": "Photo too dark. Move near a window or turn on a light, then retake.",
+    "slot_booked": "This slot was just booked. Choose another time."
+  },
+  "hints": {
+    "patient_ref_hint": "Enter the 6-digit identification code provided on the paper slip."
+  },
+  "table": {
+    "service": "Service",
+    "status": "Status",
+    "details": "Details",
+    "case_ref": "Case Ref",
+    "site": "Site",
+    "urgency": "Urgency",
+    "waiting_time": "Waiting Time",
+    "sort_ascending": "sorted ascending",
+    "sort_descending": "sorted descending",
+    "sort_none": "not sorted"
+  },
+  "timeline": {
+    "title": "Case Timeline",
+    "case_submitted": "Case submitted",
+    "ai_analyzed": "AI triage complete",
+    "doctor_reviewed": "Reviewed by doctor",
+    "referral_sent": "Referral sent to district hospital"
+  },
+  "audit": {
+    "viewed_by": "Viewed by {{actor}}, {{time}}"
+  },
+  "dev": {
+    "components_title": "ONCOLINK Design System Components",
+    "components_desc": "Living design component specification adhering strictly to docs/DESIGN.md.",
+    "buttons_section": "Buttons",
+    "fields_section": "Form Fields",
+    "status_markers_section": "Triage Status Markers",
+    "datatable_section": "Data Tables",
+    "timeline_section": "Case Timeline",
+    "audit_section": "Audit Line",
+    "banner_section": "Intended Use Banner"
+  }
+}

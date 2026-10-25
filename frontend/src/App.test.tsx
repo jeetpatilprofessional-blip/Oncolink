@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import App from "./App";
 
-describe("Frontend Foundation Smoke Test", () => {
+describe("Frontend Health Page (Restyled with Design System)", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "fetch",
@@ -15,7 +15,7 @@ describe("Frontend Foundation Smoke Test", () => {
               timestamp: "2026-10-25T12:00:00Z",
               services: {
                 mongodb: { status: "connected", replica_set: "rs0" },
-                gridfs: { status: "connected", bucket: "case_images" },
+                gridfs: { status: "connected", bucket: "case_images", file_count: 0 },
               },
             }),
         })
@@ -23,22 +23,29 @@ describe("Frontend Foundation Smoke Test", () => {
     );
   });
 
-  it("renders the intended-use notice, health check heading, and gridfs status", async () => {
+  it("renders the intended-use notice banner and restyled design components", async () => {
     render(<App />);
 
-    // Must show intended-use notice
+    // 1. Intended-use banner
+    expect(screen.getByText(/Intended Use Statement/i)).toBeDefined();
     expect(screen.getByText(/ONCOLINK is a research and education prototype/i)).toBeDefined();
 
-    // Must show foundation heading
+    // 2. Health check heading
     expect(screen.getByText(/ONCOLINK Foundation Health Check/i)).toBeDefined();
 
-    // Must show action button
-    expect(screen.getByRole("button", { name: /Refresh Health Status/i })).toBeDefined();
-
-    // Wait for the async health fetch to complete
+    // 3. Wait for health check fetch and action button (primary)
     await waitFor(() => {
-      expect(screen.getByText(/SYSTEM STATUS:/i)).toBeDefined();
-      expect(screen.getByText(/GridFS Storage/i)).toBeDefined();
+      expect(screen.getByRole("button", { name: /Refresh health status/i })).toBeDefined();
     });
+
+    // 4. Wait for services to display in DataTable
+    await waitFor(() => {
+      expect(screen.getByText(/MongoDB Database/i)).toBeDefined();
+      expect(screen.getByText(/GridFS Storage/i)).toBeDefined();
+      expect(screen.getByText(/System Status/i)).toBeDefined();
+    });
+
+    // 5. Audit line at bottom
+    expect(screen.getByText(/Viewed by System Health Sentinel/i)).toBeDefined();
   });
 });

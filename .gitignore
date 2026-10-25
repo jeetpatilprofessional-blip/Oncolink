@@ -37,6 +37,7 @@ dist/
 
 # Vite
 .vite/
+*.tsbuildinfo
 
 # Secrets and environment files (Never commit .env!)
 .env
